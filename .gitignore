@@ -1,0 +1,9 @@
+.classpath
+.settings
+.project
+.vscode
+target
+insightface
+jinspirelib/build
+hs_err*
+/src/main/resources/native/linux/libjinspire*
