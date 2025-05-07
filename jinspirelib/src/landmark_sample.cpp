@@ -1,9 +1,15 @@
 #include <iostream>
 #include <inspirecv/inspirecv.h>
+//#include <inspirecv/impl/opencv/all.h>
+//#include <inspirecv/impl/opencv/image_opencv.h>
 #include "inspireface/initialization_module/launch.h"
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 //#include "../../insightface/cpp-package/inspireface/cpp/inspireface/initialization_module/launch.h"
 #include <inspireface/middleware/inspirecv_image_process.h>
 #include "inspireface/track_module/landmark/face_landmark_adapt.h"
+#include <memory>
+
 int main() {
     std::string expansion_path = "";
     INSPIRE_LAUNCH->Load("test_res/pack/Pikachu");
@@ -19,9 +25,24 @@ int main() {
     inspire::FaceLandmarkAdapt lmk;
     lmk.loadData(lmkModel, lmkModel.modelType);
 
-    auto image = inspirecv::Image::Create("test_res/data/crop/crop.png");
-    auto data = image.Resize(112, 112);
-    auto lmk_out = lmk(data);
+
+    // Load and resize image using OpenCV
+    cv::Mat cvimage = cv::imread("test_res/data/crop/crop.png");
+    if (cvimage.empty()) {
+        std::cerr << "Failed to load image!" << std::endl;
+        return -1;
+    }
+
+    cv::Mat resized;
+    cv::resize(cvimage, resized, cv::Size(112, 112));
+
+    //auto data = image.Resize(112, 112);
+    //auto image = inspirecv::Image image(*cvimage);
+    inspirecv::Image image(resized.cols,resized.rows,resized.channels(), resized.data);
+
+
+
+    auto lmk_out = lmk(image);
     std::vector<inspirecv::Point2i> landmarks_output(inspire::FaceLandmarkAdapt::NUM_OF_LANDMARK);
     for (int i = 0; i < inspire::FaceLandmarkAdapt::NUM_OF_LANDMARK; ++i) {
         float x = lmk_out[i * 2 + 0] * image.Width();
@@ -29,8 +50,16 @@ int main() {
         landmarks_output[i] = inspirecv::Point<int>(x, y);
     }
 
+
     for (int i = 0; i < landmarks_output.size(); ++i) {
         image.DrawCircle(landmarks_output[i], 5, {0, 0, 255});
     }
     image.Write("crop_lmk.png");
+
+/*
+    for (const auto& pt : landmarks_output) {
+      cv::circle(image, pt, 5, cv::Scalar(0, 0, 255), -1); // red dot
+    }
+    cv::imwrite("crop_lmk.png", image);
+    */
 }

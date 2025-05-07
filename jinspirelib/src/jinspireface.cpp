@@ -1,12 +1,12 @@
 #include <string>
 #include <string.h>
+#include "jinspireface.hpp"
 
 // For Test code
 #include <iostream>
 #include <string>
 #include <memory>
 /*
-#include "jinspireface.hpp"
 #include "../insightface/challenges/inspireface/initialization_module/launch.h"
 #include <inspireface/middleware/inspirecv_image_process.h>
 #include "inspireface/track_module/landmark/face_landmark_adapt.h"

@@ -9,6 +9,7 @@ find_package(OpenCV REQUIRED)
 include_directories("../insightface/cpp-package/inspireface/cpp/inspireface/c_api/")
 include_directories("../insightface/cpp-package/inspireface/cpp/")
 include_directories("../insightface/cpp-package/inspireface/3rdparty/InspireCV/include/")
+include_directories("../insightface/cpp-package/inspireface/3rdparty/InspireCV/src/")
 
 include_directories("../insightface/cpp-package/inspireface/cpp/inspireface")
 include_directories("../insightface/cpp-package/inspireface/3rdparty/yaml-cpp/include")
@@ -34,6 +35,7 @@ target_link_libraries(jinspireface "${INSPIREFACE_DIR}/inspireface-linux/Inspire
 add_executable(LandmarkSample src/landmark_sample.cpp)
 #target_link_libraries(LandmarkSample InspireFace ${ext})
 target_link_libraries(LandmarkSample "${INSPIREFACE_DIR}/inspireface-linux/InspireFace/lib/libInspireFace.so")
+target_link_libraries(LandmarkSample ${OpenCV_LIBS})
 set_target_properties(LandmarkSample PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/sample/"
 )
