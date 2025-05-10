@@ -23,7 +23,7 @@ extern "C" void initialize(const char *labelsPath, const char *modelPath, bool u
 }
 
 
-extern "C" int detect(cv::Mat *imagePtr)
+extern "C" void detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
 {
      cv::Mat cvimage = *imagePtr;
 
@@ -35,7 +35,7 @@ extern "C" int detect(cv::Mat *imagePtr)
     auto ret = archive.LoadModel("landmark", lmkModel);
     if (ret != 0) {
         INSPIRE_LOGE("Load %s error: %d", "landmark", ret);
-        return -1;
+        return;
     }
 
     inspire::FaceLandmarkAdapt lmk;
@@ -44,7 +44,7 @@ extern "C" int detect(cv::Mat *imagePtr)
     // Load and resize image using OpenCV
     if (cvimage.empty()) {
         std::cerr << "Failed to load image!" << std::endl;
-        return -1;
+        return;
     }
 
     cv::Mat resized;
