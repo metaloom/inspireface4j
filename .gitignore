@@ -6,5 +6,6 @@ target
 insightface
 InspireFace
 jinspirelib/build
+jinspirelib/*.jpg
 hs_err*
 /src/main/resources/native/linux/libjinspire*

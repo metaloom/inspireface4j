@@ -3,7 +3,7 @@
 set -euo pipefail
 
 CURRENT_DIR=$(cd "$(dirname "$0")" && pwd)
-INSPIREFACE_DIR="${CURRENT_DIR}/../insightface/cpp-package/inspireface/build/"
+INSPIREFACE_DIR="${CURRENT_DIR}/../InspireFace/"
 
 # Function to display usage
 usage() {

@@ -53,7 +53,7 @@ HFImageStream loadImage(std::string sourcePathStr)
     return stream;
 }
 
-HFMultipleFaceData *detectFaces(HFSession session, HFImageStream imageHandle)
+HFMultipleFaceData *detectFaces(HFSession session, HFImageStream imageHandle, HFImageBitmap image)
 {
 
     // Execute HF_FaceContextRunFaceTrack captures face information in an image
@@ -97,11 +97,14 @@ HFMultipleFaceData *detectFaces(HFSession session, HFImageStream imageHandle)
     HFImageBitmapWriteToFile(drawImage, "draw_detected.jpg");
     HFLogPrint(HF_LOG_WARN, "Write to file success: %s", "draw_detected.jpg");
 
-    ret = HFReleaseImageStream(imageHandle);
-    if (ret != HSUCCEED)
-    {
-        HFLogPrint(HF_LOG_ERROR, "Release image stream error: %d", ret);
-    }
+    /*
+        ret = HFReleaseImageStream(imageHandle);
+        if (ret != HSUCCEED)
+        {
+            HFLogPrint(HF_LOG_ERROR, "Release image stream error: %d", ret);
+        }
+        */
+    return &multipleFaceData;
 }
 
 int tearDownSession(HFSession session)
@@ -123,7 +126,7 @@ int getEmbedding(HFSession session, HFImageStream stream)
 
     // Execute face tracking on the image
     HFMultipleFaceData multipleFaceData = {0};
-   HResult ret = HFExecuteFaceTrack(session, stream, &multipleFaceData); // Track faces in the image
+    HResult ret = HFExecuteFaceTrack(session, stream, &multipleFaceData); // Track faces in the image
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Run face track error: %d", ret);
@@ -158,9 +161,34 @@ int main()
 
     // Load a image
     std::string sourcePathStr = "test_res/data/bulk/pedestrian.png";
-    imageStream = loadImage(sourcePathStr);
-    detectFaces(session, imageStream);
+
+    HFImageBitmap image;
+    HPath sourcePath = sourcePathStr.c_str();
+    HResult ret = HFCreateImageBitmapFromFilePath(sourcePath, 3, &image);
+    if (ret != HSUCCEED)
+    {
+        HFLogPrint(HF_LOG_ERROR, "The source entered is not a picture or read error.");
+        return 10;
+    }
+
+    HFImageStream imageStream = loadImage(sourcePathStr);
+
+    HFLogPrint(HF_LOG_INFO, "Detecting...");
+    HFMultipleFaceData *multipleFaceDataPtr = detectFaces(session, imageStream, image);
+    HFMultipleFaceData multipleFaceData = *multipleFaceDataPtr;
+
+    if (multipleFaceDataPtr != NULL)
+    {
+
+        int faceNum = multipleFaceData.detectedNum;
+        HFLogPrint(HF_LOG_INFO, "Detected: %d", faceNum);
+    }
+    else
+    {
+        HFLogPrint(HF_LOG_ERROR, "No face data");
+    }
 
     // The memory must be freed at the end of the program
     return tearDownSession(session);
+    // return 10;
 }

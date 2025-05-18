@@ -1,14 +1,18 @@
 #include <string>
-#include <string.h>
 #include <iostream>
+/*
+#include <string.h>
 #include <memory>
 #include "jinspireface.hpp"
 #include <inspirecv/inspirecv.h>
-#include "inspireface/initialization_module/launch.h"
+//#include "inspireface/initialization_module/launch.h"
+//#include <inspireface/launch.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <inspireface/middleware/inspirecv_image_process.h>
+//#include <inspireface/middleware/inspirecv_image_process.h>
 #include "inspireface/track_module/landmark/face_landmark_adapt.h"
+#include "InspireFace/3rdparty/InspireCV/src/test/common/inspirecv_image_process.h"
+*/
 
 extern "C" void test_str(const char *name, const char *name2)
 {
@@ -16,6 +20,7 @@ extern "C" void test_str(const char *name, const char *name2)
     fflush(stdout);
 }
 
+/*
 extern "C" void initialize(const char *labelsPath, const char *modelPath, bool useGPU)
 {
     printf("Initializing YoloLib using model %s - labels %s - Using GPU: %s\n", modelPath, labelsPath, useGPU ? "true" : "false");
@@ -76,4 +81,4 @@ extern "C" void detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
     }
     cv::imwrite("crop_lmk.png", image);
     */
-}
+// }
