@@ -88,14 +88,14 @@ HFMultipleFaceData detectFaces(HFSession session, HFImageStream imageHandle, HFI
     {
         HFImageBitmapDrawRect(drawImage, multipleFaceData.rects[index], {0, 100, 255}, 4);
         // Print FaceID, In IMAGE-MODE it is changing, in VIDEO-MODE it is fixed, but it may be lost
-        HFLogPrint(HF_LOG_INFO, "FaceID: %d", multipleFaceData.trackIds[index]);
+        HFLogPrint(HF_LOG_INFO, "FaceID: %d - Conf: %.2f", multipleFaceData.trackIds[index], multipleFaceData.detConfidence[index]);
         // Print Head euler angle, It can often be used to judge the quality of a face by the Angle
         // of the head
-        HFLogPrint(HF_LOG_INFO, "Roll: %f, Yaw: %f, Pitch: %f", multipleFaceData.angles.roll[index], multipleFaceData.angles.yaw[index],
-                   multipleFaceData.angles.pitch[index]);
+        //HFLogPrint(HF_LOG_INFO, "Roll: %f, Yaw: %f, Pitch: %f", multipleFaceData.angles.roll[index], multipleFaceData.angles.yaw[index],       multipleFaceData.angles.pitch[index]);
     }
-    HFImageBitmapWriteToFile(drawImage, "draw_detected.jpg");
-    HFLogPrint(HF_LOG_WARN, "Write to file success: %s", "draw_detected.jpg");
+    std::string outputFile = "draw_detected.jpg";
+    HFImageBitmapWriteToFile(drawImage, outputFile.c_str());
+    HFLogPrint(HF_LOG_WARN, "Write to file success: %s", outputFile);
 
     /*
         ret = HFReleaseImageStream(imageHandle);
@@ -121,34 +121,53 @@ int tearDownSession(HFSession session)
     return 0;
 }
 
-int getEmbedding(HFSession session, HFImageStream stream)
+int getEmbedding(HFSession session, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
 {
 
-    // Execute face tracking on the image
-    HFMultipleFaceData multipleFaceData = {0};
-    HResult ret = HFExecuteFaceTrack(session, stream, &multipleFaceData); // Track faces in the image
-    if (ret != HSUCCEED)
-    {
-        HFLogPrint(HF_LOG_ERROR, "Run face track error: %d", ret);
-        return ret;
-    }
-    if (multipleFaceData.detectedNum == 0)
-    { // Check if any faces were detected
-        HFLogPrint(HF_LOG_ERROR, "No face was detected");
-        return ret;
-    }
+    /*
+        // Execute face tracking on the image
+        HFMultipleFaceData multipleFaceData = {0};
+        HResult ret = HFExecuteFaceTrack(session, stream, &multipleFaceData); // Track faces in the image
+        if (ret != HSUCCEED)
+        {
+            HFLogPrint(HF_LOG_ERROR, "Run face track error: %d", ret);
+            return ret;
+        }
+        if (multipleFaceData.detectedNum == 0)
+        { // Check if any faces were detected
+            HFLogPrint(HF_LOG_ERROR, "No face was detected");
+            return ret;
+        }
+        */
 
     // Extract facial features from the first detected face, an interface that uses copy features in a comparison scenario
     HFFaceFeature feature;
-    ret = HFCreateFaceFeature(&feature);
+    HResult ret = HFCreateFaceFeature(&feature);
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Create face feature error: %d", ret);
         return ret;
     }
 
+    ret = HFFaceFeatureExtractCpy(session, imageStream, multipleFaceData.tokens[0], feature.data);
+    if (ret != HSUCCEED)
+    {
+        HFLogPrint(HF_LOG_ERROR, "Extract feature error: %d", ret);
+        return ret;
+    }
+    int size = feature.size;
+    HFLogPrint(HF_LOG_INFO, "Extract feature size: %d", size);
+    /*
+    for (int i = 0; i < size; i++)
+    {
+        HFLogPrint(HF_LOG_INFO, "Vector[%d]: %.2f", i, feature.data[i]);
+    }
+    */
+
     // Not in use need to release
     HFReleaseFaceFeature(&feature);
+
+    return 0;
 }
 
 int main()
@@ -181,6 +200,7 @@ int main()
     {
         int faceNum = multipleFaceData.detectedNum;
         HFLogPrint(HF_LOG_INFO, "Detected: %d", faceNum);
+        getEmbedding(session, multipleFaceData, imageStream);
     }
     else
     {
