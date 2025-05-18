@@ -12,7 +12,7 @@ HFSession setupSession()
         return NULL;
     }
 
-    HOption option = HF_ENABLE_FACE_RECOGNITION | HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT | HF_ENABLE_LIVENESS | HF_ENABLE_DETECT_MODE_LANDMARK;
+    HOption option = HF_ENABLE_FACE_RECOGNITION | HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT | HF_ENABLE_LIVENESS | HF_ENABLE_DETECT_MODE_LANDMARK | HF_ENABLE_FACE_ATTRIBUTE;
     HFDetectMode detMode = HF_DETECT_MODE_ALWAYS_DETECT;
     // Maximum number of faces detected
     HInt32 maxDetectNum = 20;
@@ -91,11 +91,11 @@ HFMultipleFaceData detectFaces(HFSession session, HFImageStream imageHandle, HFI
         HFLogPrint(HF_LOG_INFO, "FaceID: %d - Conf: %.2f", multipleFaceData.trackIds[index], multipleFaceData.detConfidence[index]);
         // Print Head euler angle, It can often be used to judge the quality of a face by the Angle
         // of the head
-        //HFLogPrint(HF_LOG_INFO, "Roll: %f, Yaw: %f, Pitch: %f", multipleFaceData.angles.roll[index], multipleFaceData.angles.yaw[index],       multipleFaceData.angles.pitch[index]);
+        // HFLogPrint(HF_LOG_INFO, "Roll: %f, Yaw: %f, Pitch: %f", multipleFaceData.angles.roll[index], multipleFaceData.angles.yaw[index],       multipleFaceData.angles.pitch[index]);
     }
-    std::string outputFile = "draw_detected.jpg";
-    HFImageBitmapWriteToFile(drawImage, outputFile.c_str());
-    HFLogPrint(HF_LOG_WARN, "Write to file success: %s", outputFile);
+    // std::string outputFile = "draw_detected.jpg";
+    HFImageBitmapWriteToFile(drawImage, "draw_detected.jpg");
+    HFLogPrint(HF_LOG_WARN, "Write to file success: %s", "draw_detected.jpg");
 
     /*
         ret = HFReleaseImageStream(imageHandle);
@@ -121,7 +121,7 @@ int tearDownSession(HFSession session)
     return 0;
 }
 
-int getEmbedding(HFSession session, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
+int getFaceEmbedding(HFSession session, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
 {
 
     /*
@@ -170,6 +170,50 @@ int getEmbedding(HFSession session, HFMultipleFaceData multipleFaceData, HFImage
     return 0;
 }
 
+void loadCVImage()
+{
+    /*
+        HFImageStream imgHandle;
+        auto img = inspirecv::Image::Create(GET_DATA("data/attribute/1423.jpg"));
+        REQUIRE(!img.Empty());
+        ret = CVImageToImageStream(img, imgHandle);
+        REQUIRE(ret == HSUCCEED);
+        */
+}
+
+int getFaceAttributes(HFSession session, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
+{
+
+    HResult ret = HFMultipleFacePipelineProcessOptional(session, imageStream, &multipleFaceData, HF_ENABLE_FACE_ATTRIBUTE);
+    if (ret != HSUCCEED)
+    {
+        HFLogPrint(HF_LOG_ERROR, "Failed to run pipeline: %d", ret);
+        return 10;
+    }
+
+    HFLogPrint(HF_LOG_INFO, "Loading face attributes.");
+    HFFaceAttributeResult faceAttr = {};
+    ret = HFGetFaceAttributeResult(session, &faceAttr);
+    if (ret != HSUCCEED)
+    {
+        HFLogPrint(HF_LOG_ERROR, "Create face attr error: %d", ret);
+        return ret;
+    }
+    HFLogPrint(HF_LOG_INFO, "Loaded face attributes.");
+    if (faceAttr.num <= 0)
+    {
+        HFLogPrint(HF_LOG_ERROR, "No attr found");
+    }
+    else
+    {
+        HFLogPrint(HF_LOG_INFO, "Race: %d", faceAttr.race[0]);
+        HFLogPrint(HF_LOG_INFO, "Gender: %d", faceAttr.gender[0]);
+        HFLogPrint(HF_LOG_INFO, "AgeBracket: %d", faceAttr.ageBracket[0]);
+    }
+
+    return 0;
+}
+
 int main()
 {
     HFSession session = setupSession();
@@ -179,8 +223,8 @@ int main()
     }
 
     // Load a image
-    std::string sourcePathStr = "test_res/data/bulk/pedestrian.png";
-
+    //    std::string sourcePathStr = "test_res/data/bulk/pedestrian.png";
+    std::string sourcePathStr = "test_res/data/RD/d3.jpeg";
     HFImageBitmap image;
     HPath sourcePath = sourcePathStr.c_str();
     HResult ret = HFCreateImageBitmapFromFilePath(sourcePath, 3, &image);
@@ -200,7 +244,8 @@ int main()
     {
         int faceNum = multipleFaceData.detectedNum;
         HFLogPrint(HF_LOG_INFO, "Detected: %d", faceNum);
-        getEmbedding(session, multipleFaceData, imageStream);
+        getFaceEmbedding(session, multipleFaceData, imageStream);
+        getFaceAttributes(session, multipleFaceData, imageStream);
     }
     else
     {
