@@ -53,7 +53,7 @@ HFImageStream loadImage(std::string sourcePathStr)
     return stream;
 }
 
-HFMultipleFaceData *detectFaces(HFSession session, HFImageStream imageHandle, HFImageBitmap image)
+HFMultipleFaceData detectFaces(HFSession session, HFImageStream imageHandle, HFImageBitmap image)
 {
 
     // Execute HF_FaceContextRunFaceTrack captures face information in an image
@@ -62,7 +62,7 @@ HFMultipleFaceData *detectFaces(HFSession session, HFImageStream imageHandle, HF
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Execute HFExecuteFaceTrack error: %d", ret);
-        return NULL;
+        return multipleFaceData;
     }
 
     // Print the number of faces detected
@@ -75,14 +75,14 @@ HFMultipleFaceData *detectFaces(HFSession session, HFImageStream imageHandle, HF
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Copy ImageBitmap error: %d", ret);
-        return NULL;
+        return multipleFaceData;
     }
     HFImageBitmapData data;
     ret = HFImageBitmapGetData(drawImage, &data);
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Get ImageBitmap data error: %d", ret);
-        return NULL;
+        return multipleFaceData;
     }
     for (int index = 0; index < faceNum; ++index)
     {
@@ -104,7 +104,7 @@ HFMultipleFaceData *detectFaces(HFSession session, HFImageStream imageHandle, HF
             HFLogPrint(HF_LOG_ERROR, "Release image stream error: %d", ret);
         }
         */
-    return &multipleFaceData;
+    return multipleFaceData;
 }
 
 int tearDownSession(HFSession session)
@@ -174,12 +174,11 @@ int main()
     HFImageStream imageStream = loadImage(sourcePathStr);
 
     HFLogPrint(HF_LOG_INFO, "Detecting...");
-    HFMultipleFaceData *multipleFaceDataPtr = detectFaces(session, imageStream, image);
-    HFMultipleFaceData multipleFaceData = *multipleFaceDataPtr;
+    HFMultipleFaceData multipleFaceData = detectFaces(session, imageStream, image);
+    // HFMultipleFaceData multipleFaceData = *multipleFaceDataPtr;
 
-    if (multipleFaceDataPtr != NULL)
+    if (multipleFaceData.detectedNum != 0)
     {
-
         int faceNum = multipleFaceData.detectedNum;
         HFLogPrint(HF_LOG_INFO, "Detected: %d", faceNum);
     }
