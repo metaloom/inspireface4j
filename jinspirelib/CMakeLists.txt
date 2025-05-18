@@ -40,6 +40,14 @@ set_target_properties(LandmarkSample PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/sample/"
 )
 
+add_executable(BoxSample src/box_sample.cpp)
+#target_link_libraries(BoxSample InspireFace ${ext})
+target_link_libraries(BoxSample "${INSPIREFACE_DIR}/inspireface-linux/InspireFace/lib/libInspireFace.so")
+target_link_libraries(BoxSample ${OpenCV_LIBS})
+set_target_properties(BoxSample PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/sample/"
+)
+
 
 if(APPLE)
 set_target_properties(jinspireface PROPERTIES

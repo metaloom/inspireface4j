@@ -4,6 +4,7 @@
 .vscode
 target
 insightface
+InspireFace
 jinspirelib/build
 hs_err*
 /src/main/resources/native/linux/libjinspire*
