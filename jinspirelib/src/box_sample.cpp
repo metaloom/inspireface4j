@@ -2,16 +2,21 @@
 #include <memory>
 #include <inspireface.h>
 #include <inspirecv/inspirecv.h>
+// #include <inspireface/c_api/inspireface.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 static bool initialized = false;
 
 static std::unique_ptr<HFSession> globalSession;
+static std::string sourcePathStr = "test_res/data/RD/d3.jpeg";
 
 inline HResult CVImageToImageStream(const inspirecv::Image &image, HFImageStream &handle, HFImageFormat format = HF_STREAM_BGR,
                                     HFRotation rot = HF_CAMERA_ROTATION_0)
 {
+
+    HFLogPrint(HF_LOG_INFO, "Converting: %d x %d", image.Width(), image.Height());
+
     if (image.Empty())
     {
         return -1;
@@ -94,24 +99,44 @@ HFImageStream loadImage(std::string sourcePathStr)
     return stream;
 }
 
-HFImageStream loadCVImage(cv::Mat *imagePtr)
+HFImageStream ConvertCVImage(cv::Mat &cvimage)
 {
-    cv::Mat cvimage = *imagePtr;
-    inspirecv::Image image(cvimage.cols, cvimage.rows, cvimage.channels(), cvimage.data);
+    HFLogPrint(HF_LOG_INFO, "Converting: %d x %d", cvimage.cols, cvimage.rows);
 
-    HFImageStream imgHandle;
-    HResult ret = CVImageToImageStream(image, imgHandle);
-    if (ret != HSUCCEED)
+    // cv::Mat cvimage = *imagePtr;
+    // inspirecv::Image image(cvimage.cols, cvimage.rows, cvimage.channels(), cvimage.data);
+    // auto image = inspirecv::Image::Create("test_res/data/RD/d3.jpeg");
+
+    HFImageData imageData = {0};
+    imageData.data = cvimage.data;
+    imageData.height = cvimage.rows;
+    imageData.width = cvimage.cols;
+    imageData.rotation = HF_CAMERA_ROTATION_0;
+    imageData.format = HF_STREAM_BGR;
+
+    HFImageStream imageSteamHandle;
+    HResult ret = HFCreateImageStream(&imageData, &imageSteamHandle);
+    if (ret == HSUCCEED)
     {
-        HFLogPrint(HF_LOG_ERROR, "Failed to convert cv image: %d", ret);
-        return NULL;
+        HFLogPrint(HF_LOG_INFO, "image handle: %ld", (long)imageSteamHandle);
     }
 
-    return imgHandle;
+    /*
+        HFImageStream imgHandle;
+        HResult ret = CVImageToImageStream(image, imgHandle);
+        if (ret != HSUCCEED)
+        {
+            HFLogPrint(HF_LOG_ERROR, "Failed to convert cv image: %d", ret);
+            return NULL;
+        }
+    */
+    return imageSteamHandle;
 }
 
-HFMultipleFaceData detectFaces(HFSession session, HFImageStream imageHandle, cv::Mat image)
+HFMultipleFaceData detectFaces(HFImageStream imageHandle, cv::Mat image, bool drawBoundingBoxes)
 {
+    HFLogPrint(HF_LOG_INFO, "Detecting...");
+    HFSession session = *globalSession.get();
 
     // Execute HF_FaceContextRunFaceTrack captures face information in an image
     HFMultipleFaceData multipleFaceData = {0};
@@ -143,27 +168,26 @@ HFMultipleFaceData detectFaces(HFSession session, HFImageStream imageHandle, cv:
             return multipleFaceData;
         }
     */
-    cv::Mat outImage = image.clone();
-
-    for (int index = 0; index < faceNum; ++index)
+    if (drawBoundingBoxes)
     {
-        HFaceRect faceRect = multipleFaceData.rects[index];
-        cv::Rect rect(faceRect.x, faceRect.y, faceRect.width, faceRect.height);
-        cv::rectangle(outImage, rect, cv::Scalar(0, 255, 0));
+        // cv::Mat outImage = image.clone();
 
-        // HFImageBitmapDrawRect(drawImage, multipleFaceData.rects[index], {0, 100, 255}, 4);
-        //  Print FaceID, In IMAGE-MODE it is changing, in VIDEO-MODE it is fixed, but it may be lost
-        HFLogPrint(HF_LOG_INFO, "FaceID: %d - Conf: %.2f", multipleFaceData.trackIds[index], multipleFaceData.detConfidence[index]);
-        // Print Head euler angle, It can often be used to judge the quality of a face by the Angle
-        // of the head
-        // HFLogPrint(HF_LOG_INFO, "Roll: %f, Yaw: %f, Pitch: %f", multipleFaceData.angles.roll[index], multipleFaceData.angles.yaw[index],       multipleFaceData.angles.pitch[index]);
+        for (int index = 0; index < faceNum; ++index)
+        {
+            HFaceRect faceRect = multipleFaceData.rects[index];
+            cv::Rect rect(faceRect.x, faceRect.y, faceRect.width, faceRect.height);
+            cv::rectangle(image, rect, cv::Scalar(0, 255, 0));
+
+            // HFImageBitmapDrawRect(drawImage, multipleFaceData.rects[index], {0, 100, 255}, 4);
+            //  Print FaceID, In IMAGE-MODE it is changing, in VIDEO-MODE it is fixed, but it may be lost
+            HFLogPrint(HF_LOG_INFO, "FaceID: %d - Conf: %.2f", multipleFaceData.trackIds[index], multipleFaceData.detConfidence[index]);
+            // Print Head euler angle, It can often be used to judge the quality of a face by the Angle
+            // of the head
+            // HFLogPrint(HF_LOG_INFO, "Roll: %f, Yaw: %f, Pitch: %f", multipleFaceData.angles.roll[index], multipleFaceData.angles.yaw[index],       multipleFaceData.angles.pitch[index]);
+        }
+        // std::string outputFile = "draw_detected.jpg";
+        // HFImageBitmapWriteToFile(drawImage, );
     }
-    // std::string outputFile = "draw_detected.jpg";
-    // HFImageBitmapWriteToFile(drawImage, );
-
-    bool check = imwrite("draw_detected.jpg", outImage);
-
-    HFLogPrint(HF_LOG_WARN, "Write to file success: %s", "draw_detected.jpg");
 
     /*
         ret = HFReleaseImageStream(imageHandle);
@@ -203,10 +227,10 @@ extern "C" void releaseSession()
     }
 }
 
-
-
-int getFaceEmbedding(HFSession session, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
+int getFaceEmbedding(HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
 {
+
+    HFSession session = *globalSession.get();
 
     /*
         // Execute face tracking on the image
@@ -254,8 +278,9 @@ int getFaceEmbedding(HFSession session, HFMultipleFaceData multipleFaceData, HFI
     return 0;
 }
 
-int getFaceAttributes(HFSession session, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
+int getFaceAttributes(HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
 {
+    HFSession session = *globalSession.get();
 
     HResult ret = HFMultipleFacePipelineProcessOptional(session, imageStream, &multipleFaceData, HF_ENABLE_FACE_ATTRIBUTE);
     if (ret != HSUCCEED)
@@ -303,34 +328,20 @@ HFImageStream loadImageStream(std::string sourcePathStr)
     return imageStream;
 }
 
-int main()
+void detect(cv::Mat &image)
 {
-    initializeSession();
-    HFSession session = *globalSession.get();
-    /*
-        HFSession session = setupSession();
-        if (session == NULL)
-        {
-            return 10;
-        }
-    */
+    // HFImageStream imageStream = loadImageStream(sourcePathStr);
+    HFImageStream imageStream = ConvertCVImage(image);
 
-    std::string sourcePathStr = "test_res/data/RD/d3.jpeg";
-    //    std::string sourcePathStr = "test_res/data/bulk/pedestrian.png";
-    cv::Mat img = cv::imread(sourcePathStr, cv::IMREAD_COLOR);
-
-    HFImageStream imageStream = loadImageStream(sourcePathStr);
-
-    HFLogPrint(HF_LOG_INFO, "Detecting...");
-    HFMultipleFaceData multipleFaceData = detectFaces(session, imageStream, img);
+    HFMultipleFaceData multipleFaceData = detectFaces(imageStream, image, true);
     // HFMultipleFaceData multipleFaceData = *multipleFaceDataPtr;
 
     if (multipleFaceData.detectedNum != 0)
     {
         int faceNum = multipleFaceData.detectedNum;
         HFLogPrint(HF_LOG_INFO, "Detected: %d", faceNum);
-        getFaceEmbedding(session, multipleFaceData, imageStream);
-        getFaceAttributes(session, multipleFaceData, imageStream);
+        getFaceEmbedding(multipleFaceData, imageStream);
+        getFaceAttributes(multipleFaceData, imageStream);
     }
     else
     {
@@ -342,10 +353,28 @@ int main()
     {
         HFLogPrint(HF_LOG_ERROR, "Release image stream error: %d", ret);
     }
+}
 
-    // The memory must be freed at the end of the program
-    // return tearDownSession(session);
+void writeImage(cv::Mat image)
+{
+    bool check = imwrite("draw_detected.jpg", image);
+    if (check)
+    {
+        HFLogPrint(HF_LOG_WARN, "Write to file success: %s", "draw_detected.jpg");
+    }
+    else
+    {
+        HFLogPrint(HF_LOG_ERROR, "Write to file failed: %s", "draw_detected.jpg");
+    }
+}
+
+int main()
+{
+    //    std::string sourcePathStr = "test_res/data/bulk/pedestrian.png";
+    initializeSession();
+    cv::Mat image = cv::imread(sourcePathStr, cv::IMREAD_COLOR);
+    detect(image);
+    writeImage(image);
     releaseSession();
-
     return 0;
 }
