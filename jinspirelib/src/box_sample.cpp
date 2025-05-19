@@ -2,7 +2,6 @@
 #include <memory>
 #include <inspireface.h>
 #include <inspirecv/inspirecv.h>
-// #include <inspireface/c_api/inspireface.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
@@ -328,12 +327,14 @@ HFImageStream loadImageStream(std::string sourcePathStr)
     return imageStream;
 }
 
-void detect(cv::Mat &image)
+void detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
 {
+    cv::Mat image = *imagePtr;
+
     // HFImageStream imageStream = loadImageStream(sourcePathStr);
     HFImageStream imageStream = ConvertCVImage(image);
 
-    HFMultipleFaceData multipleFaceData = detectFaces(imageStream, image, true);
+    HFMultipleFaceData multipleFaceData = detectFaces(imageStream, image, drawBoundingBoxes);
     // HFMultipleFaceData multipleFaceData = *multipleFaceDataPtr;
 
     if (multipleFaceData.detectedNum != 0)
@@ -373,7 +374,7 @@ int main()
     //    std::string sourcePathStr = "test_res/data/bulk/pedestrian.png";
     initializeSession();
     cv::Mat image = cv::imread(sourcePathStr, cv::IMREAD_COLOR);
-    detect(image);
+    detect(&image, true);
     writeImage(image);
     releaseSession();
     return 0;

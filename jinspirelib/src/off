@@ -1,16 +1,18 @@
-#include <iostream>
-#include <inspirecv/inspirecv.h>
-//#include <inspirecv/impl/opencv/all.h>
-//#include <inspirecv/impl/opencv/image_opencv.h>
-#include "inspireface/initialization_module/launch.h"
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-//#include "../../insightface/cpp-package/inspireface/cpp/inspireface/initialization_module/launch.h"
-#include <inspireface/middleware/inspirecv_image_process.h>
-#include "inspireface/track_module/landmark/face_landmark_adapt.h"
-#include <memory>
 
-int main() {
+
+
+/*
+extern "C" void initialize(const char *labelsPath, const char *modelPath, bool useGPU)
+{
+    printf("Initializing YoloLib using model %s - labels %s - Using GPU: %s\n", modelPath, labelsPath, useGPU ? "true" : "false");
+    fflush(stdout);
+}
+
+
+extern "C" void detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
+{
+     cv::Mat cvimage = *imagePtr;
+
     std::string expansion_path = "";
     INSPIRE_LAUNCH->Load("test_res/pack/Pikachu");
     auto archive = INSPIRE_LAUNCH->getMArchive();
@@ -19,18 +21,16 @@ int main() {
     auto ret = archive.LoadModel("landmark", lmkModel);
     if (ret != 0) {
         INSPIRE_LOGE("Load %s error: %d", "landmark", ret);
-        return -1;
+        return;
     }
 
     inspire::FaceLandmarkAdapt lmk;
     lmk.loadData(lmkModel, lmkModel.modelType);
 
-
     // Load and resize image using OpenCV
-    cv::Mat cvimage = cv::imread("test_res/data/crop/crop.png");
     if (cvimage.empty()) {
         std::cerr << "Failed to load image!" << std::endl;
-        return -1;
+        return;
     }
 
     cv::Mat resized;
@@ -62,4 +62,4 @@ int main() {
     }
     cv::imwrite("crop_lmk.png", image);
     */
-}
+// }

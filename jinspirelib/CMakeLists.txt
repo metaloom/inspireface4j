@@ -32,15 +32,6 @@ target_link_libraries(jinspireface ${OpenCV_LIBS})
 target_link_libraries(jinspireface "${INSPIREFACE_DIR}/lib/libInspireFace.so")
 
 
-
-#add_executable(LandmarkSample src/landmark_sample.cpp)
-##target_link_libraries(LandmarkSample InspireFace ${ext})
-#target_link_libraries(LandmarkSample "${INSPIREFACE_DIR}/lib/libInspireFace.so")
-#target_link_libraries(LandmarkSample ${OpenCV_LIBS})
-#set_target_properties(LandmarkSample PROPERTIES
-#        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/sample/"
-#)
-
 add_executable(BoxSample src/box_sample.cpp)
 #target_link_libraries(BoxSample InspireFace ${ext})
 target_link_libraries(BoxSample "${INSPIREFACE_DIR}/lib/libInspireFace.so")
