@@ -165,11 +165,11 @@ public class InspirefaceLib {
 
 		try {
 			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
-			MemorySegment detectionArrayStruct = (MemorySegment) detectHandler.invoke(imageSeg, false);
+			MemorySegment detectionArrayStruct = (MemorySegment) detectHandler.invoke(imageSeg, drawBoundingBoxes);
 
-			detectionArrayStruct = detectionArrayStruct.reinterpret(DetectionArrayMemoryLayout.size());
-			int detectedNum = detectionArrayStruct.get(ValueLayout.JAVA_INT, 0);
-			System.out.println(detectedNum);
+//			detectionArrayStruct = detectionArrayStruct.reinterpret(DetectionArrayMemoryLayout.size());
+//			int detectedNum = detectionArrayStruct.get(ValueLayout.JAVA_INT, 0);
+//			System.out.println(detectedNum);
 			// System.out.println("Code: " + code);
 			// List<Detection> results = mapDetectionsArray(detectionArrayStruct);
 			// return results;

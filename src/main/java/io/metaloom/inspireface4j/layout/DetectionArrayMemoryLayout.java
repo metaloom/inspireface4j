@@ -11,8 +11,22 @@ import java.lang.invoke.VarHandle;
 public class DetectionArrayMemoryLayout {
 
 	public static final GroupLayout DETECTION_ARRAY_LAYOUT = MemoryLayout.structLayout(
-		ValueLayout.ADDRESS.withName("data"),
-		JAVA_INT.withName("count"));
+		JAVA_INT.withName("detectedNum"),
+		ValueLayout.ADDRESS.withName("rects")
+//	    HFaceRect *rects;          ///< Array of bounding rectangles for each face.
+//	    HInt32 *trackIds;          ///< Array of track IDs for each face.
+//	    HFloat *detConfidence;     ///< Array of detection confidence for each face.
+//	    HFFaceEulerAngle angles;   ///< Euler angles for each face.
+//	    PHFFaceBasicToken tokens;  ///< Tokens associated with each face.
+		);
+	
+//
+//typedef struct HFaceRect {
+//    HInt32 x;             ///< X-coordinate of the top-left corner of the rectangle.
+//    HInt32 y;             ///< Y-coordinate of the top-left corner of the rectangle.
+//    HInt32 width;         ///< Width of the rectangle.
+//    HInt32 height;        ///< Height of the rectangle.
+//} HFaceRect;         ///< Rectangle representing a face region.
 
 	// VarHandles for BoundingBox
 	public static final VarHandle COUNT_HANDLER = DETECTION_ARRAY_LAYOUT.varHandle(MemoryLayout.PathElement.groupElement("count"));

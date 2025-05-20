@@ -23,7 +23,7 @@ extern "C" void test_str(const char *name, const char *name2)
 static bool initialized = false;
 
 static std::unique_ptr<HFSession> globalSession;
-static std::string sourcePathStr = "test_res/data/RD/d3.jpeg";
+// static std::string sourcePathStr = "test_res/data/RD/d3.jpeg";
 
 inline HResult CVImageToImageStream(const inspirecv::Image &image, HFImageStream &handle, HFImageFormat format = HF_STREAM_BGR,
                                     HFRotation rot = HF_CAMERA_ROTATION_0)
@@ -50,9 +50,9 @@ inline HResult CVImageToImageStream(const inspirecv::Image &image, HFImageStream
 HFSession setupSession(std::string resourcePath)
 {
     // Initialization at the beginning of the program
-    const char* path = resourcePath.c_str();
+    const char *path = resourcePath.c_str();
 
-    //HFLogPrint(HF_LOG_INFO, "Creating Session %s", path);
+    // HFLogPrint(HF_LOG_INFO, "Creating Session %s", path);
     HResult ret = HFReloadInspireFace(path);
     if (ret != HSUCCEED)
     {
@@ -65,7 +65,7 @@ HFSession setupSession(std::string resourcePath)
     // Maximum number of faces detected
     HInt32 maxDetectNum = 20;
     // Face detection image input level
-    HInt32 detectPixelLevel = 640;
+    HInt32 detectPixelLevel = 120;
     // Handle of the current face SDK algorithm context
     HFSession session = {0};
     ret = HFCreateInspireFaceSessionOptional(option, detMode, maxDetectNum, detectPixelLevel, -1, &session);
@@ -150,9 +150,11 @@ HFImageStream ConvertCVImage(cv::Mat &cvimage)
     return imageSteamHandle;
 }
 
-HFMultipleFaceData detectFaces(HFImageStream imageHandle, cv::Mat image, bool drawBoundingBoxes)
+HFMultipleFaceData detectFaces(HFImageStream imageHandle, cv::Mat *imagePtr, bool drawBoundingBoxes)
 {
-    HFLogPrint(HF_LOG_INFO, "Detecting...");
+    cv::Mat image = *imagePtr;
+
+    // HFLogPrint(HF_LOG_INFO, "Detecting...");
     HFSession session = *globalSession.get();
 
     // Execute HF_FaceContextRunFaceTrack captures face information in an image
@@ -185,6 +187,7 @@ HFMultipleFaceData detectFaces(HFImageStream imageHandle, cv::Mat image, bool dr
             return multipleFaceData;
         }
     */
+
     if (drawBoundingBoxes)
     {
         // cv::Mat outImage = image.clone();
@@ -204,6 +207,10 @@ HFMultipleFaceData detectFaces(HFImageStream imageHandle, cv::Mat image, bool dr
         }
         // std::string outputFile = "draw_detected.jpg";
         // HFImageBitmapWriteToFile(drawImage, );
+    }
+    else
+    {
+        HFLogPrint(HF_LOG_ERROR, "Not drawing");
     }
 
     /*
@@ -352,32 +359,39 @@ extern "C" HFMultipleFaceData *detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
     // HFImageStream imageStream = loadImageStream(sourcePathStr);
     HFImageStream imageStream = ConvertCVImage(image);
 
-    static HFMultipleFaceData multipleFaceData = detectFaces(imageStream, image, drawBoundingBoxes);
-return & multipleFaceData ;
-/*
-    HResult ret = HFReleaseImageStream(imageStream);
-    if (ret != HSUCCEED)
+    HFLogPrint(HF_LOG_INFO, "Now detect");
+    // cv::Rect rect2(0, 0, 200, 200);
+    // cv::rectangle(image, rect2, cv::Scalar(0, 255, 0));
+
+    HFMultipleFaceData multipleFaceData = detectFaces(imageStream, imagePtr, drawBoundingBoxes);
+
+    /*
+        HResult ret = HFReleaseImageStream(imageStream);
+        if (ret != HSUCCEED)
+        {
+            HFLogPrint(HF_LOG_ERROR, "Release image stream error: %d", ret);
+        }
+    */
+
+    if (multipleFaceData.detectedNum != 0)
     {
-        HFLogPrint(HF_LOG_ERROR, "Release image stream error: %d", ret);
+        int faceNum = multipleFaceData.detectedNum;
+        HFLogPrint(HF_LOG_INFO, "Detected: %d", faceNum);
+        getFaceEmbedding(multipleFaceData, imageStream);
+        getFaceAttributes(multipleFaceData, imageStream);
     }
-*/
-//HFMultipleFaceData *multipleFaceData = new HFMultipleFaceData;
-//    return multipleFaceData;
+    else
+    {
+        HFLogPrint(HF_LOG_ERROR, "No face data");
+    }
+
+    return &multipleFaceData;
+    // HFMultipleFaceData *multipleFaceData = new HFMultipleFaceData;
+    //     return multipleFaceData;
 
     /*
 
 
-        if (multipleFaceData.detectedNum != 0)
-        {
-            int faceNum = multipleFaceData.detectedNum;
-            HFLogPrint(HF_LOG_INFO, "Detected: %d", faceNum);
-            //getFaceEmbedding(multipleFaceData, imageStream);
-            //getFaceAttributes(multipleFaceData, imageStream);
-        }
-        else
-        {
-            HFLogPrint(HF_LOG_ERROR, "No face data");
-        }
 
       */
 }
