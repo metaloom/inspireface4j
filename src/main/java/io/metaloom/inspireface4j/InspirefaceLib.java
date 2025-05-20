@@ -16,6 +16,9 @@ import java.lang.foreign.ValueLayout.OfInt;
 import java.lang.foreign.ValueLayout.OfLong;
 import java.lang.invoke.MethodHandle;
 import java.nio.ByteOrder;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -131,30 +134,26 @@ public class InspirefaceLib {
 		}
 		inspirefaceLibrary = loadLib();
 
-		
-		initialized = true;
-		return;
-		
-//		Path mPath = Paths.get(modelPath);
-//		if (!Files.exists(mPath)) {
-//			throw new RuntimeException("Unable to locate model with path " + mPath);
-//		}
+		Path mPath = Paths.get(modelPath);
+		if (!Files.exists(mPath)) {
+			throw new RuntimeException("Unable to locate model with path " + mPath);
+		}
 
-//		MethodHandle initHandler = linker
-//			.downcallHandle(
-//				inspirefaceLibrary.findOrThrow("initialize"),
-//				FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BOOLEAN));
-//
-//		try (Arena arena = Arena.ofConfined()) {
-//			//MemorySegment labelsPathMem = arena.allocateFrom(labelsPath);
-//			MemorySegment modelPathMem = arena.allocateFrom(modelPath);
-//			initHandler.invoke(modelPathMem, useGPU);
-//			initialized = true;
-//		} catch (Throwable t) {
-//			throw new RuntimeException("Failed to initialize InspirefaceLib", t);
-//		}
+		MethodHandle initHandler = linker
+			.downcallHandle(
+				inspirefaceLibrary.findOrThrow("initializeSession"),
+				FunctionDescriptor.ofVoid(ValueLayout.ADDRESS)				
+				);
+
+		try (Arena arena = Arena.ofConfined()) {
+			// MemorySegment labelsPathMem = arena.allocateFrom(labelsPath);
+			MemorySegment modelPathMem = arena.allocateFrom(modelPath);
+			initHandler.invoke(modelPathMem);
+			initialized = true;
+		} catch (Throwable t) {
+			throw new RuntimeException("Failed to initialize InspirefaceLib", t);
+		}
 	}
-
 
 	public static List<Detection> detect(Mat imageMat, boolean drawBoundingBoxes) {
 		checkInitialized();
@@ -166,10 +165,10 @@ public class InspirefaceLib {
 
 		try {
 			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
-			//MemorySegment detectionArrayStruct = (MemorySegment) 
-				detectHandler.invoke(imageSeg, false);
-			//int code = detectionArrayStruct.get(ValueLayout.JAVA_INT, 0);
-			//System.out.println("Code: " + code);
+			// MemorySegment detectionArrayStruct = (MemorySegment)
+			detectHandler.invoke(imageSeg, false);
+			// int code = detectionArrayStruct.get(ValueLayout.JAVA_INT, 0);
+			// System.out.println("Code: " + code);
 			// List<Detection> results = mapDetectionsArray(detectionArrayStruct);
 			// return results;
 

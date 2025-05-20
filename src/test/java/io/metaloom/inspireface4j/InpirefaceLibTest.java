@@ -21,10 +21,10 @@ import io.metaloom.video4j.utils.SimpleImageViewer;
 
 public class InpirefaceLibTest {
 
-	private static String imagePath = "insightface/cpp-package/inspireface/test_res/data/crop/crop.png";
+	private static String imagePath = "jinspirelib/test_res/data/RD/d3.jpeg";
 
-	private static String modelPath = "insightface/cpp-package/inspireface/test_res/pack/Megatron";
-	
+	private static String modelPath = "jinspirelib/test_res/pack/Pikachu";
+
 	static {
 		Video4j.init();
 		InspirefaceLib.init(modelPath, false);
