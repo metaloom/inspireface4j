@@ -19,16 +19,18 @@ import io.metaloom.video4j.utils.SimpleImageViewer;
 
 public class UsageExampleTest {
 
+	private static final String DEFAULT_PACK = "InspireFace/test_res/pack/Pikachu";
+
 	@Test
 	public void testImageUsageExample() throws IOException {
 		// SNIPPET START image-usage.example
 		String imagePath = "insightface/cpp-package/inspireface/test_res/data/crop/crop.png";
-		boolean useGPU = true;
 
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
-		InspirefaceLib.init("insightface/cpp-package/inspireface/test_res/pack/Megatron", useGPU);
-		
+
+		InspirefaceLib.init(DEFAULT_PACK);
+
 		// Load the image and invoke the detection
 		BufferedImage img = ImageUtils.load(new File(imagePath));
 		List<Detection> detections = InspirefaceLib.detect(img, false);
@@ -43,11 +45,10 @@ public class UsageExampleTest {
 	@Test
 	public void testVideoUsageExample() throws IOException {
 		// SNIPPET START video-usage.example
-		boolean useGPU = false;
 
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
-		InspirefaceLib.init("insightface/cpp-package/inspireface/test_res/pack/Megatron", useGPU);
+		InspirefaceLib.init("InspireFace/test_res/pack/Pikachu");
 		SimpleImageViewer viewer = new SimpleImageViewer();
 
 		// Open the video using Video4j
@@ -80,11 +81,10 @@ public class UsageExampleTest {
 		long start = System.currentTimeMillis();
 		long nFrames = 0;
 		// SNIPPET START video-usage.example
-		boolean useGPU = false;
 
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
-		InspirefaceLib.init("insightface/cpp-package/inspireface/test_res/pack/Megatron", useGPU);
+		InspirefaceLib.init("InspireFace/test_res/pack/Pikachu");
 
 		// Open the video using Video4j
 		try (VideoFile video = VideoFile.open("src/test/resources/3769953-hd_1920_1080_25fps.mp4")) {

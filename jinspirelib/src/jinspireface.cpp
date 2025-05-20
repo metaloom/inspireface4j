@@ -47,11 +47,13 @@ inline HResult CVImageToImageStream(const inspirecv::Image &image, HFImageStream
     return ret;
 }
 
-HFSession setupSession()
+HFSession setupSession(std::string resourcePath)
 {
     // Initialization at the beginning of the program
-    std::string resourcePath = "test_res/pack/Pikachu";
-    HResult ret = HFReloadInspireFace(resourcePath.c_str());
+    const char* path = resourcePath.c_str();
+
+    //HFLogPrint(HF_LOG_INFO, "Creating Session %s", path);
+    HResult ret = HFReloadInspireFace(path);
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Failed to launch InspireFace: %d", ret);
@@ -79,7 +81,8 @@ extern "C" void initializeSession(const char *packPath)
 {
     if (!initialized)
     {
-        HFSession session = setupSession();
+        // std::string resourcePath = "test_res/pack/Pikachu";
+        HFSession session = setupSession(packPath);
         globalSession = std::make_unique<HFSession>(std::move(session));
         initialized = true;
     }
@@ -342,33 +345,41 @@ HFImageStream loadImageStream(std::string sourcePathStr)
     return imageStream;
 }
 
-extern "C" void detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
-{    
+extern "C" HFMultipleFaceData *detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
+{
     cv::Mat image = *imagePtr;
 
     // HFImageStream imageStream = loadImageStream(sourcePathStr);
     HFImageStream imageStream = ConvertCVImage(image);
 
-    HFMultipleFaceData multipleFaceData = detectFaces(imageStream, image, drawBoundingBoxes);
-    // HFMultipleFaceData multipleFaceData = *multipleFaceDataPtr;
-
-    if (multipleFaceData.detectedNum != 0)
-    {
-        int faceNum = multipleFaceData.detectedNum;
-        HFLogPrint(HF_LOG_INFO, "Detected: %d", faceNum);
-        getFaceEmbedding(multipleFaceData, imageStream);
-        getFaceAttributes(multipleFaceData, imageStream);
-    }
-    else
-    {
-        HFLogPrint(HF_LOG_ERROR, "No face data");
-    }
-
+    static HFMultipleFaceData multipleFaceData = detectFaces(imageStream, image, drawBoundingBoxes);
+return & multipleFaceData ;
+/*
     HResult ret = HFReleaseImageStream(imageStream);
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Release image stream error: %d", ret);
     }
+*/
+//HFMultipleFaceData *multipleFaceData = new HFMultipleFaceData;
+//    return multipleFaceData;
+
+    /*
+
+
+        if (multipleFaceData.detectedNum != 0)
+        {
+            int faceNum = multipleFaceData.detectedNum;
+            HFLogPrint(HF_LOG_INFO, "Detected: %d", faceNum);
+            //getFaceEmbedding(multipleFaceData, imageStream);
+            //getFaceAttributes(multipleFaceData, imageStream);
+        }
+        else
+        {
+            HFLogPrint(HF_LOG_ERROR, "No face data");
+        }
+
+      */
 }
 
 void writeImage(cv::Mat image)

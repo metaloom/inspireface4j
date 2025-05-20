@@ -128,7 +128,7 @@ public class InspirefaceLib {
 		}
 	}
 
-	public static void init(String modelPath, boolean useGPU) {
+	public static void init(String modelPath) {
 		if (initialized) {
 			throw new RuntimeException("InspirefaceLib already initialized");
 		}
@@ -142,8 +142,7 @@ public class InspirefaceLib {
 		MethodHandle initHandler = linker
 			.downcallHandle(
 				inspirefaceLibrary.findOrThrow("initializeSession"),
-				FunctionDescriptor.ofVoid(ValueLayout.ADDRESS)				
-				);
+				FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
 
 		try (Arena arena = Arena.ofConfined()) {
 			// MemorySegment labelsPathMem = arena.allocateFrom(labelsPath);
@@ -161,13 +160,16 @@ public class InspirefaceLib {
 		MethodHandle detectHandler = linker
 			.downcallHandle(
 				inspirefaceLibrary.findOrThrow("detect"),
-				FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_BOOLEAN));
+				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BOOLEAN));
+		// FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_BOOLEAN));
 
 		try {
 			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
-			// MemorySegment detectionArrayStruct = (MemorySegment)
-			detectHandler.invoke(imageSeg, false);
-			// int code = detectionArrayStruct.get(ValueLayout.JAVA_INT, 0);
+			MemorySegment detectionArrayStruct = (MemorySegment) detectHandler.invoke(imageSeg, false);
+
+			detectionArrayStruct = detectionArrayStruct.reinterpret(DetectionArrayMemoryLayout.size());
+			int detectedNum = detectionArrayStruct.get(ValueLayout.JAVA_INT, 0);
+			System.out.println(detectedNum);
 			// System.out.println("Code: " + code);
 			// List<Detection> results = mapDetectionsArray(detectionArrayStruct);
 			// return results;
