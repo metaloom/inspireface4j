@@ -352,7 +352,7 @@ HFImageStream loadImageStream(std::string sourcePathStr)
     return imageStream;
 }
 
-extern "C" HFMultipleFaceData *detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
+extern "C" HFMultipleFaceData* detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
 {
     cv::Mat image = *imagePtr;
 
@@ -363,7 +363,8 @@ extern "C" HFMultipleFaceData *detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
     // cv::Rect rect2(0, 0, 200, 200);
     // cv::rectangle(image, rect2, cv::Scalar(0, 255, 0));
 
-    HFMultipleFaceData multipleFaceData = detectFaces(imageStream, imagePtr, drawBoundingBoxes);
+   //HFMultipleFaceData multipleFaceData = detectFaces(imageStream, imagePtr, drawBoundingBoxes);
+   HFMultipleFaceData data = detectFaces(imageStream, imagePtr, drawBoundingBoxes);
 
     /*
         HResult ret = HFReleaseImageStream(imageStream);
@@ -373,21 +374,22 @@ extern "C" HFMultipleFaceData *detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
         }
     */
 
-    if (multipleFaceData.detectedNum != 0)
+    if (data.detectedNum != 0)
     {
-        int faceNum = multipleFaceData.detectedNum;
+        int faceNum = data.detectedNum;
         HFLogPrint(HF_LOG_INFO, "Detected: %d", faceNum);
-        getFaceEmbedding(multipleFaceData, imageStream);
-        getFaceAttributes(multipleFaceData, imageStream);
+        getFaceEmbedding(data, imageStream);
+        getFaceAttributes(data, imageStream);
     }
     else
     {
         HFLogPrint(HF_LOG_ERROR, "No face data");
     }
 
-    return &multipleFaceData;
+    HFMultipleFaceData* multipleFaceData = new HFMultipleFaceData(data);
+    return multipleFaceData;
     // HFMultipleFaceData *multipleFaceData = new HFMultipleFaceData;
-    //     return multipleFaceData;
+    // return multipleFaceData;
 
     /*
 

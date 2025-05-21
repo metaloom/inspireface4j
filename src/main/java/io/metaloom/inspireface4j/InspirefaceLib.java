@@ -9,12 +9,14 @@ import java.lang.foreign.AddressLayout;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
+import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.foreign.ValueLayout.OfInt;
 import java.lang.foreign.ValueLayout.OfLong;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,8 +30,8 @@ import org.opencv.imgproc.Imgproc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.metaloom.inspireface4j.layout.DetectionArrayMemoryLayout;
 import io.metaloom.inspireface4j.layout.DetectionMemoryLayout;
+import io.metaloom.inspireface4j.layout.HFMultipleFaceDataLayout;
 import io.metaloom.video4j.impl.MatProvider;
 import io.metaloom.video4j.opencv.CVUtils;
 
@@ -56,46 +58,49 @@ public class InspirefaceLib {
 		}
 	}
 
-	private static List<Detection> mapDetectionsArray(MemorySegment detectionArrayStruct) throws Throwable {
-
-		MethodHandle freeDetectionHandler = linker.downcallHandle(
-			inspirefaceLibrary.find("free_detection").orElseThrow(),
-			FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
-
-		detectionArrayStruct = detectionArrayStruct.reinterpret(DetectionArrayMemoryLayout.size());
-
-		MemorySegment dataPtr = detectionArrayStruct.get(ValueLayout.ADDRESS, 0);
-		int detectionCount = detectionArrayStruct.get(ValueLayout.JAVA_INT, ValueLayout.ADDRESS.byteSize());
-		dataPtr = dataPtr.reinterpret(DetectionMemoryLayout.size() * detectionCount);
-
-		if (logger.isDebugEnabled()) {
-			logger.debug("Received " + detectionCount + " detections");
-			logger.debug("Got " + detectionArrayStruct + " from function.");
-		}
-
-		// Read BoundingBox elements
-		List<Detection> detections = new ArrayList<>();
-		long structSize = DetectionMemoryLayout.size();
-		for (long i = 0; i < detectionCount; i++) {
-			MemorySegment detectionMemory = dataPtr.asSlice(i * structSize, structSize);
-			float conf = DetectionMemoryLayout.getConf(detectionMemory);
-			int clazz = DetectionMemoryLayout.getClassId(detectionMemory);
-			int x = detectionMemory.get(JINT, 0);
-			int y = detectionMemory.get(JINT, JINT.byteSize());
-			int width = detectionMemory.get(JINT, 2 * JINT.byteSize());
-			int height = detectionMemory.get(JINT, 3 * JINT.byteSize());
-			BoundingBox bbox = new BoundingBox(x, y, width, height);
-			detections.add(new Detection(bbox, conf, clazz));
-		}
-
-		// Print results
-		// detections.forEach(System.out::println);
-
-		// Free the native memory
-		freeDetectionHandler.invoke(detectionArrayStruct);
-		return detections;
-
-	}
+	// private static List<Detection> mapDetectionsArray(MemorySegment detectionArrayStruct) throws Throwable {
+	//
+	// MethodHandle freeDetectionHandler = linker.downcallHandle(
+	// inspirefaceLibrary.find("free_detection").orElseThrow(),
+	// FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+	//
+	// detectionArrayStruct = detectionArrayStruct.reinterpret(HFMultipleFaceDataLayout.size());
+	//
+	// System.out.println("--------------");
+	// int d2 = HFMultipleFaceDataLayout.getDetectedNums(detectionArrayStruct);
+	// System.out.println("d2: " + d2);
+	// MemorySegment dataPtr = detectionArrayStruct.get(ValueLayout.ADDRESS, 0);
+	// int detectionCount = detectionArrayStruct.get(ValueLayout.JAVA_INT, ValueLayout.ADDRESS.byteSize());
+	// dataPtr = dataPtr.reinterpret(DetectionMemoryLayout.size() * detectionCount);
+	//
+	// if (logger.isDebugEnabled()) {
+	// logger.debug("Received " + detectionCount + " detections");
+	// logger.debug("Got " + detectionArrayStruct + " from function.");
+	// }
+	//
+	// // Read BoundingBox elements
+	// List<Detection> detections = new ArrayList<>();
+	// long structSize = DetectionMemoryLayout.size();
+	// for (long i = 0; i < detectionCount; i++) {
+	// MemorySegment detectionMemory = dataPtr.asSlice(i * structSize, structSize);
+	// float conf = DetectionMemoryLayout.getConf(detectionMemory);
+	// int clazz = DetectionMemoryLayout.getClassId(detectionMemory);
+	// int x = detectionMemory.get(JINT, 0);
+	// int y = detectionMemory.get(JINT, JINT.byteSize());
+	// int width = detectionMemory.get(JINT, 2 * JINT.byteSize());
+	// int height = detectionMemory.get(JINT, 3 * JINT.byteSize());
+	// BoundingBox bbox = new BoundingBox(x, y, width, height);
+	// detections.add(new Detection(bbox, conf, clazz));
+	// }
+	//
+	// // Print results
+	// // detections.forEach(System.out::println);
+	//
+	// // Free the native memory
+	// freeDetectionHandler.invoke(detectionArrayStruct);
+	// return detections;
+	//
+	// }
 
 	private static SymbolLookup loadLib() {
 		String os = System.getProperty("os.name", "generic")
@@ -161,15 +166,23 @@ public class InspirefaceLib {
 			.downcallHandle(
 				inspirefaceLibrary.findOrThrow("detect"),
 				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BOOLEAN));
-		// FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_BOOLEAN));
 
 		try {
 			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
-			MemorySegment detectionArrayStruct = (MemorySegment) detectHandler.invoke(imageSeg, drawBoundingBoxes);
+			MemorySegment multipleFaceData = (MemorySegment) detectHandler.invoke(imageSeg, drawBoundingBoxes);
+			System.out.println("---------");
+			// System.out.println("SIZE: " + HFMultipleFaceDataLayout.size());
+			multipleFaceData = multipleFaceData.reinterpret(HFMultipleFaceDataLayout.DETECTION_ARRAY_LAYOUT.byteSize());
+			System.out.println("Access");
+			int detectedNum = multipleFaceData.get(ValueLayout.JAVA_INT, 0);
+			System.out.println("NUM1: " + detectedNum);
 
-//			detectionArrayStruct = detectionArrayStruct.reinterpret(DetectionArrayMemoryLayout.size());
-//			int detectedNum = detectionArrayStruct.get(ValueLayout.JAVA_INT, 0);
-//			System.out.println(detectedNum);
+			VarHandle DETECTED_NUM = HFMultipleFaceDataLayout.DETECTION_ARRAY_LAYOUT.varHandle(
+				MemoryLayout.PathElement.groupElement("detectedNum"));
+
+			int numFaces = (int) DETECTED_NUM.get(multipleFaceData, 0L);
+			System.out.println("NUM2: " + numFaces);
+
 			// System.out.println("Code: " + code);
 			// List<Detection> results = mapDetectionsArray(detectionArrayStruct);
 			// return results;

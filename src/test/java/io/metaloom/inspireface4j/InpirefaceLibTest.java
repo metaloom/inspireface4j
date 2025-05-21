@@ -48,7 +48,7 @@ public class InpirefaceLibTest {
 			System.out.println(detection.label() + " conf: " + detection.conf());
 		}
 
-		System.in.read();
+		//System.in.read();
 	}
 
 	@Test
