@@ -195,6 +195,7 @@ HFMultipleFaceData detectFaces(HFImageStream imageHandle, cv::Mat *imagePtr, boo
         for (int index = 0; index < faceNum; ++index)
         {
             HFaceRect faceRect = multipleFaceData.rects[index];
+            HFLogPrint(HF_LOG_INFO, "Face: %d - [x%d:y%d:w%d:h%d]",index, faceRect.x,  faceRect.y,  faceRect.width,  faceRect.height);
             cv::Rect rect(faceRect.x, faceRect.y, faceRect.width, faceRect.height);
             cv::rectangle(image, rect, cv::Scalar(0, 255, 0));
 
@@ -391,25 +392,8 @@ extern "C" HFMultipleFaceData* detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
     // HFMultipleFaceData *multipleFaceData = new HFMultipleFaceData;
     // return multipleFaceData;
 
-    /*
-
-
-
-      */
 }
 
-void writeImage(cv::Mat image)
-{
-    bool check = imwrite("draw_detected.jpg", image);
-    if (check)
-    {
-        HFLogPrint(HF_LOG_WARN, "Write to file success: %s", "draw_detected.jpg");
-    }
-    else
-    {
-        HFLogPrint(HF_LOG_ERROR, "Write to file failed: %s", "draw_detected.jpg");
-    }
-}
 /*
 int main()
 {
@@ -417,7 +401,6 @@ int main()
     initializeSession();
     cv::Mat image = cv::imread(sourcePathStr, cv::IMREAD_COLOR);
     detect(image);
-    writeImage(image);
     releaseSession();
     return 0;
 }

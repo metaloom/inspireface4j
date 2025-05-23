@@ -11,6 +11,7 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.foreign.ValueLayout.OfInt;
@@ -30,7 +31,6 @@ import org.opencv.imgproc.Imgproc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.metaloom.inspireface4j.layout.DetectionMemoryLayout;
 import io.metaloom.inspireface4j.layout.HFMultipleFaceDataLayout;
 import io.metaloom.video4j.impl.MatProvider;
 import io.metaloom.video4j.opencv.CVUtils;
@@ -179,9 +179,28 @@ public class InspirefaceLib {
 
 			VarHandle DETECTED_NUM = HFMultipleFaceDataLayout.DETECTION_ARRAY_LAYOUT.varHandle(
 				MemoryLayout.PathElement.groupElement("detectedNum"));
-
 			int numFaces = (int) DETECTED_NUM.get(multipleFaceData, 0L);
 			System.out.println("NUM2: " + numFaces);
+
+			MemorySegment rectsPointer = multipleFaceData.get(ValueLayout.ADDRESS,
+				HFMultipleFaceDataLayout.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("rects"))); // you need to calculate this
+																																// offset
+			MemorySegment rectsArray = MemorySegment.ofAddress(rectsPointer.address());
+			rectsArray = rectsArray.reinterpret(numFaces * HFMultipleFaceDataLayout.FACE_RECT_LAYOUT.byteSize());
+
+			for (int i = 0; i < numFaces; i++) {
+				HFMultipleFaceDataLayout.accessHFaceRectArray(rectsArray, i);
+			}
+
+			// // Rects
+			// SequenceLayout pointsLayout = MemoryLayout.sequenceLayout(detectedNum, HFMultipleFaceDataLayout.FACE_RECT_LAYOUT);
+			// VarHandle xHandle = pointsLayout.varHandle(MemoryLayout.PathElement.sequenceElement(),
+			// MemoryLayout.PathElement.groupElement("x"));
+
+			// for (int i = 0; i < detectedNum; i++) {
+			// System.out.println("X[" + i +"] " + xHandle.get(multipleFaceData, 0, i));
+			// }
+			// MemorySegment rect = HFMultipleFaceDataLayout.RECTS_HANDLER..get(multipleFaceData, 0L);
 
 			// System.out.println("Code: " + code);
 			// List<Detection> results = mapDetectionsArray(detectionArrayStruct);
