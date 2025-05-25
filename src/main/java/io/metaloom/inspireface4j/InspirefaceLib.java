@@ -11,13 +11,11 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.foreign.ValueLayout.OfInt;
 import java.lang.foreign.ValueLayout.OfLong;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,7 +29,8 @@ import org.opencv.imgproc.Imgproc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.metaloom.inspireface4j.layout.HFMultipleFaceDataLayout;
+import io.metaloom.inspireface4j.data.HFMultipleFaceData;
+import io.metaloom.inspireface4j.data.HFaceRect;
 import io.metaloom.video4j.impl.MatProvider;
 import io.metaloom.video4j.opencv.CVUtils;
 
@@ -102,6 +101,75 @@ public class InspirefaceLib {
 	//
 	// }
 
+	private static List<Detection> mapFaceDetections(MemorySegment multipleFaceData) {
+		List<Detection> detections = new ArrayList<>();
+
+		HFMultipleFaceData faceData = new HFMultipleFaceData(multipleFaceData);
+		// System.out.println("Detections: " + faceData.detectedNum());
+		// if (faceData.detectedNum() >= 1) {
+		// MemorySegment rectData = faceData.rectsMemory();
+		// HFaceRect rect = new HFaceRect(rectData, 0);
+		// System.out.println(rect);
+		// }
+
+		// System.out.println("---------");
+		// // System.out.println("SIZE: " + HFMultipleFaceDataLayout.size());
+		// multipleFaceData = multipleFaceData.reinterpret(HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteSize());
+		multipleFaceData = faceData.segment();
+		//
+		//
+		//
+		int detectedNum = multipleFaceData.get(ValueLayout.JAVA_INT, 0);
+		//
+		//
+		////		VarHandle DETECTED_NUM = HFMultipleFaceDataLayout.DETECTION_ARRAY_LAYOUT.varHandle(
+////			MemoryLayout.PathElement.groupElement("detectedNum"));
+////		int numFaces = (int) DETECTED_NUM.get(multipleFaceData, 0L);
+////		System.out.println("NUM2: " + numFaces);
+		//
+		MemorySegment rectsPointer = multipleFaceData.get(ValueLayout.ADDRESS,
+			HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("rects"))); // you need to calculate this
+		
+		MemorySegment confPointer = multipleFaceData.get(ValueLayout.ADDRESS,
+			HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("rects"))); // you need to calculate this
+		// offset
+		
+		MemorySegment confArray = MemorySegment.ofAddress(confPointer.address());
+		confArray = confArray.reinterpret(ValueLayout.JAVA_FLOAT.byteSize()*detectedNum);
+		
+		MemorySegment rectsArray = MemorySegment.ofAddress(rectsPointer.address());
+		rectsArray = rectsArray.reinterpret(detectedNum * HFaceRect.FACE_RECT_LAYOUT.byteSize());
+		for (int i = 0; i < detectedNum; i++) {
+
+			MemorySegment rect = rectsArray.asSlice(i * HFaceRect.FACE_RECT_LAYOUT.byteSize(), HFaceRect.FACE_RECT_LAYOUT.byteSize());
+
+			float conf = confArray.get(ValueLayout.JAVA_FLOAT, 0);
+			int x = (int) HFaceRect.X_HANDLE.get(rect, 0);
+			int y = (int) HFaceRect.Y_HANDLE.get(rect, 0);
+			int width = (int) HFaceRect.WIDTH_HANDLE.get(rect, 0);
+			int height = (int) HFaceRect.HEIGHT_HANDLE.get(rect, 0);
+
+			detections.add(new Detection(new BoundingBox(x, y, width, height), conf));
+			System.out.printf("Face[%d] - x: %d, y: %d, width: %d, height: %d - Conf: %.2f %n", i, x, y, width, height, conf);
+		}
+
+		// // Rects
+		// SequenceLayout pointsLayout = MemoryLayout.sequenceLayout(detectedNum, HFMultipleFaceDataLayout.FACE_RECT_LAYOUT);
+		// VarHandle xHandle = pointsLayout.varHandle(MemoryLayout.PathElement.sequenceElement(),
+		// MemoryLayout.PathElement.groupElement("x"));
+
+		// for (int i = 0; i < detectedNum; i++) {
+		// System.out.println("X[" + i +"] " + xHandle.get(multipleFaceData, 0, i));
+		// }
+		// MemorySegment rect = HFMultipleFaceDataLayout.RECTS_HANDLER..get(multipleFaceData, 0L);
+
+		// System.out.println("Code: " + code);
+		// List<Detection> results = mapDetectionsArray(detectionArrayStruct);
+		// return results;
+
+		return detections;
+	}
+
 	private static SymbolLookup loadLib() {
 		String os = System.getProperty("os.name", "generic")
 			.toLowerCase(Locale.ENGLISH);
@@ -170,55 +238,12 @@ public class InspirefaceLib {
 		try {
 			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
 			MemorySegment multipleFaceData = (MemorySegment) detectHandler.invoke(imageSeg, drawBoundingBoxes);
-			System.out.println("---------");
-			// System.out.println("SIZE: " + HFMultipleFaceDataLayout.size());
-			multipleFaceData = multipleFaceData.reinterpret(HFMultipleFaceDataLayout.DETECTION_ARRAY_LAYOUT.byteSize());
-			System.out.println("Access");
-			int detectedNum = multipleFaceData.get(ValueLayout.JAVA_INT, 0);
-			System.out.println("NUM1: " + detectedNum);
-
-			VarHandle DETECTED_NUM = HFMultipleFaceDataLayout.DETECTION_ARRAY_LAYOUT.varHandle(
-				MemoryLayout.PathElement.groupElement("detectedNum"));
-			int numFaces = (int) DETECTED_NUM.get(multipleFaceData, 0L);
-			System.out.println("NUM2: " + numFaces);
-
-			MemorySegment rectsPointer = multipleFaceData.get(ValueLayout.ADDRESS,
-				HFMultipleFaceDataLayout.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("rects"))); // you need to calculate this
-																																// offset
-			MemorySegment rectsArray = MemorySegment.ofAddress(rectsPointer.address());
-			rectsArray = rectsArray.reinterpret(numFaces * HFMultipleFaceDataLayout.FACE_RECT_LAYOUT.byteSize());
-
-			for (int i = 0; i < numFaces; i++) {
-				HFMultipleFaceDataLayout.accessHFaceRectArray(rectsArray, i);
-			}
-
-			// // Rects
-			// SequenceLayout pointsLayout = MemoryLayout.sequenceLayout(detectedNum, HFMultipleFaceDataLayout.FACE_RECT_LAYOUT);
-			// VarHandle xHandle = pointsLayout.varHandle(MemoryLayout.PathElement.sequenceElement(),
-			// MemoryLayout.PathElement.groupElement("x"));
-
-			// for (int i = 0; i < detectedNum; i++) {
-			// System.out.println("X[" + i +"] " + xHandle.get(multipleFaceData, 0, i));
-			// }
-			// MemorySegment rect = HFMultipleFaceDataLayout.RECTS_HANDLER..get(multipleFaceData, 0L);
-
-			// System.out.println("Code: " + code);
-			// List<Detection> results = mapDetectionsArray(detectionArrayStruct);
-			// return results;
-
+			//return mapFaceDetections(multipleFaceData);
 			return new ArrayList<Detection>();
 		} catch (Throwable t) {
 			throw new RuntimeException("Failed to invoke detection", t);
 		}
 
-	}
-
-	public static String toLabel(Detection detection) {
-		int clazzId = detection.classId();
-		if (clazzId < 1 || clazzId > labels.size()) {
-			return null;
-		}
-		return labels.get(detection.classId());
 	}
 
 	public static List<Detection> detect(BufferedImage img, boolean drawBoundingBoxes) {

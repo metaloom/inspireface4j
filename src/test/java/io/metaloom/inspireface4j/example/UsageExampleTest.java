@@ -37,7 +37,7 @@ public class UsageExampleTest {
 
 		// Print the detections
 		for (Detection detection : detections) {
-			System.out.println(detection.label() + " = " + detection.conf() + " @ " + detection.box());
+			//System.out.println(detection.label() + " = " + detection.conf() + " @ " + detection.box());
 		}
 		// SNIPPET END image-usage.example
 	}
@@ -64,10 +64,9 @@ public class UsageExampleTest {
 
 				// Print the detections
 				for (Detection detection : detections) {
-					String label = detection.label();
 					double confidence = detection.conf();
 					BoundingBox box = detection.box();
-					System.out.println("Frame[" + video.currentFrame() + "] " + label + " = " + confidence + " @ " + box);
+					System.out.println("Frame[" + video.currentFrame() + "] = " + confidence + " @ " + box);
 				}
 
 				viewer.show(frame.mat());

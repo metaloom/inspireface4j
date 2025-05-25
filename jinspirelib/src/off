@@ -1,5 +1,72 @@
+/*
+#include <iostream>
+#include <string>
+#include <string.h>
+#include <memory>
+#include <inspirecv/inspirecv.h>
+//#include "inspireface/initialization_module/launch.h"
+//#include <inspireface/launch.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+//#include <inspireface/middleware/inspirecv_image_process.h>
+#include "inspireface/track_module/landmark/face_landmark_adapt.h"
+#include "InspireFace/3rdparty/InspireCV/src/test/common/inspirecv_image_process.h"
+*/
 
+/*
+int main()
+{
+    //    std::string sourcePathStr = "test_res/data/bulk/pedestrian.png";
+    initializeSession();
+    cv::Mat image = cv::imread(sourcePathStr, cv::IMREAD_COLOR);
+    detect(image);
+    releaseSession();
+    return 0;
+}
+*/
+    /*
+        HFImageStream imgHandle;
+        HResult ret = CVImageToImageStream(image, imgHandle);
+        if (ret != HSUCCEED)
+        {
+            HFLogPrint(HF_LOG_ERROR, "Failed to convert cv image: %d", ret);
+            return NULL;
+        }
+    */
 
+    /*
+        // Copy a new image to draw
+        HFImageBitmap drawImage = {0};
+        ret = HFImageBitmapCopy(image, &drawImage);
+        if (ret != HSUCCEED)
+        {
+            HFLogPrint(HF_LOG_ERROR, "Copy ImageBitmap error: %d", ret);
+            return multipleFaceData;
+        }
+        HFImageBitmapData data;
+        ret = HFImageBitmapGetData(drawImage, &data);
+        if (ret != HSUCCEED)
+        {
+            HFLogPrint(HF_LOG_ERROR, "Get ImageBitmap data error: %d", ret);
+            return multipleFaceData;
+        }
+    */
+
+HFImageStream loadImageStream(std::string sourcePathStr)
+{
+    // Load a image
+    HFImageBitmap image;
+    HPath sourcePath = sourcePathStr.c_str();
+    HResult ret = HFCreateImageBitmapFromFilePath(sourcePath, 3, &image);
+    if (ret != HSUCCEED)
+    {
+        HFLogPrint(HF_LOG_ERROR, "The source entered is not a picture or read error.");
+        return NULL;
+    }
+
+    HFImageStream imageStream = loadImage(sourcePathStr);
+    return imageStream;
+}
 
 /*
 extern "C" void initialize(const char *labelsPath, const char *modelPath, bool useGPU)
