@@ -195,13 +195,16 @@ extern "C" void releaseSession()
     }
 }
 
-HFFaceFeature getFaceEmbedding(HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
+HResult getFaceEmbedding(HFFaceFeature *feature, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
 {
 
-//HFFaceFeature *featurePtr
-    HFSession session = *globalSession.get();
     //HFFaceFeature feature = *featurePtr;
-    HFFaceFeature feature ;
+    int size1 = (*feature).size;
+    HFLogPrint(HF_LOG_INFO, "Lib1: Extract feature size: %d", size1);
+
+    // HFFaceFeature *featurePtr
+    HFSession session = *globalSession.get();
+
     // Execute face tracking on the image
     // HFMultipleFaceData multipleFaceData = {0};
     /*
@@ -223,21 +226,21 @@ HFFaceFeature getFaceEmbedding(HFMultipleFaceData multipleFaceData, HFImageStrea
 
     // Extract facial features from the first detected face, an interface that uses copy features in a comparison scenario
     // HFFaceFeature feature = *featurePtr;
-    HResult ret = HFCreateFaceFeature(&feature);
+    HResult ret = HFCreateFaceFeature(feature);
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Lib: Create face embedding error: %d", ret);
-        //return ret;
+        return ret;
     }
 
     // multipleFaceData
-    ret = HFFaceFeatureExtractCpy(session, imageStream, multipleFaceData.tokens[0], feature.data);
+    ret = HFFaceFeatureExtractCpy(session, imageStream, multipleFaceData.tokens[0], (*feature).data);
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Lib: Extract embedding error: %d", ret);
-        //return ret;
+        // return ret;
     }
-    int size = feature.size;
+    int size = (*feature).size;
     HFLogPrint(HF_LOG_INFO, "Lib: Extract feature size: %d", size);
 
     /*
@@ -250,7 +253,7 @@ HFFaceFeature getFaceEmbedding(HFMultipleFaceData multipleFaceData, HFImageStrea
     // Not in use need to release
     // HFReleaseFaceFeature(&feature);
 
-    return feature;
+    return 0;
 }
 
 HResult getFaceAttributes(HFFaceAttributeResult *faceAttrPtr, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
@@ -280,17 +283,22 @@ HResult getFaceAttributes(HFFaceAttributeResult *faceAttrPtr, HFMultipleFaceData
 extern "C" HFFaceFeature *faceEmbeddings(HFMultipleFaceData *multipleFaceDataPtr, cv::Mat *imagePtr)
 {
     HFLogPrint(HF_LOG_INFO, "Lib: faceEmbeddings");
-    
+
     HFMultipleFaceData multipleFaceData = *multipleFaceDataPtr;
     cv::Mat image = *imagePtr;
     HFImageStream imageStream = ConvertCVImage(image);
 
-    HFFaceFeature data = getFaceEmbedding(multipleFaceData, imageStream);
-    /*
+    // HFFaceFeature feature;
+    HFFaceFeature *feature = new HFFaceFeature();
+    (*feature).size = 20;
+    HResult ret = getFaceEmbedding(feature, multipleFaceData, imageStream);
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Lib: Failed to run pipeline: %d", ret);
-    }*/
+    }
+
+    int size = (*feature).size;
+    HFLogPrint(HF_LOG_INFO, "Lib2: Extract feature size: %d", size);
 
     /*
         if (data.num <= 0)
@@ -305,8 +313,10 @@ extern "C" HFFaceFeature *faceEmbeddings(HFMultipleFaceData *multipleFaceDataPtr
         }
         */
 
-    HFFaceFeature *faceFeature = new HFFaceFeature(data);
-    return faceFeature;
+    // HFFaceFeature *faceFeature = new HFFaceFeature(feature);
+    // return faceFeature;
+    return feature;
+    // return &feature;
 }
 
 extern "C" HFFaceAttributeResult *faceAttributes(HFMultipleFaceData *multipleFaceDataPtr, cv::Mat *imagePtr)
@@ -349,16 +359,6 @@ extern "C" HFMultipleFaceData *detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
     {
         int faceNum = data.detectedNum;
         HFLogPrint(HF_LOG_INFO, "Lib: Detected: %d", faceNum);
-        // getFaceEmbedding(data, imageStream);
-        /*
-        HFFaceAttributeResult attrData = {};
-
-        HResult ret = getFaceAttributes(attrData, data, imageStream);
-        if (ret != HSUCCEED)
-        {
-            HFLogPrint(HF_LOG_ERROR, "Lib: Failed to run pipeline: %d", ret);
-        }
-        */
     }
     else
     {
