@@ -9,7 +9,7 @@ inline HResult CVImageToImageStream(const inspirecv::Image &image, HFImageStream
                                     HFRotation rot = HF_CAMERA_ROTATION_0)
 {
 
-    HFLogPrint(HF_LOG_INFO, "Converting: %d x %d", image.Width(), image.Height());
+    HFLogPrint(HF_LOG_INFO, "Lib: Converting: %d x %d", image.Width(), image.Height());
 
     if (image.Empty())
     {
@@ -36,7 +36,7 @@ HFSession setupSession(std::string resourcePath)
     HResult ret = HFReloadInspireFace(path);
     if (ret != HSUCCEED)
     {
-        HFLogPrint(HF_LOG_ERROR, "Failed to launch InspireFace: %d", ret);
+        HFLogPrint(HF_LOG_ERROR, "Lib: Failed to launch InspireFace: %d", ret);
         return NULL;
     }
 
@@ -51,7 +51,7 @@ HFSession setupSession(std::string resourcePath)
     ret = HFCreateInspireFaceSessionOptional(option, detMode, maxDetectNum, detectPixelLevel, -1, &session);
     if (ret != HSUCCEED)
     {
-        HFLogPrint(HF_LOG_ERROR, "Create FaceContext error: %d", ret);
+        HFLogPrint(HF_LOG_ERROR, "Lib: Create FaceContext error: %d", ret);
         return NULL;
     }
     return session;
@@ -67,7 +67,7 @@ extern "C" void initializeSession(const char *packPath)
     }
     else
     {
-        HFLogPrint(HF_LOG_ERROR, "Session already initialized");
+        HFLogPrint(HF_LOG_ERROR, "Lib: Session already initialized");
     }
 }
 
@@ -78,7 +78,7 @@ HFImageStream loadImage(std::string sourcePathStr)
     HResult ret = HFCreateImageBitmapFromFilePath(sourcePath, 3, &image);
     if (ret != HSUCCEED)
     {
-        HFLogPrint(HF_LOG_ERROR, "The source entered is not a picture or read error.");
+        HFLogPrint(HF_LOG_ERROR, "Lib: The source entered is not a picture or read error.");
         return NULL;
     }
     // Prepare an image parameter structure for configuration
@@ -87,7 +87,7 @@ HFImageStream loadImage(std::string sourcePathStr)
     if (ret != HSUCCEED)
     {
         HFReleaseImageStream(stream);
-        HFLogPrint(HF_LOG_ERROR, "Create ImageStream error: %d", ret);
+        HFLogPrint(HF_LOG_ERROR, "Lib: Create ImageStream error: %d", ret);
         return NULL;
     }
 
@@ -96,7 +96,7 @@ HFImageStream loadImage(std::string sourcePathStr)
 
 HFImageStream ConvertCVImage(cv::Mat &cvimage)
 {
-    HFLogPrint(HF_LOG_INFO, "Converting: %d x %d", cvimage.cols, cvimage.rows);
+    HFLogPrint(HF_LOG_INFO, "Lib: Converting: %d x %d", cvimage.cols, cvimage.rows);
 
     HFImageData imageData = {0};
     imageData.data = cvimage.data;
@@ -109,7 +109,7 @@ HFImageStream ConvertCVImage(cv::Mat &cvimage)
     HResult ret = HFCreateImageStream(&imageData, &imageSteamHandle);
     if (ret == HSUCCEED)
     {
-        HFLogPrint(HF_LOG_INFO, "image handle: %ld", (long)imageSteamHandle);
+        HFLogPrint(HF_LOG_INFO, "Lib: Image handle: %ld", (long)imageSteamHandle);
     }
 
     return imageSteamHandle;
@@ -133,7 +133,7 @@ HFMultipleFaceData detectFaces(HFImageStream imageStream, cv::Mat *imagePtr, boo
 
     // Print the number of faces detected
     auto faceNum = multipleFaceData.detectedNum;
-    HFLogPrint(HF_LOG_INFO, "Num of face: %d", faceNum);
+    HFLogPrint(HF_LOG_INFO, "Lib: Num of face: %d", faceNum);
 
     if (drawBoundingBoxes)
     {
@@ -142,13 +142,13 @@ HFMultipleFaceData detectFaces(HFImageStream imageStream, cv::Mat *imagePtr, boo
         for (int index = 0; index < faceNum; ++index)
         {
             HFaceRect faceRect = multipleFaceData.rects[index];
-            HFLogPrint(HF_LOG_INFO, "Face: %d - [x%d:y%d:w%d:h%d]", index, faceRect.x, faceRect.y, faceRect.width, faceRect.height);
+            HFLogPrint(HF_LOG_INFO, "Lib: Face: %d - [x%d:y%d:w%d:h%d]", index, faceRect.x, faceRect.y, faceRect.width, faceRect.height);
             cv::Rect rect(faceRect.x, faceRect.y, faceRect.width, faceRect.height);
             cv::rectangle(image, rect, cv::Scalar(0, 255, 0));
 
             // HFImageBitmapDrawRect(drawImage, multipleFaceData.rects[index], {0, 100, 255}, 4);
             //  Print FaceID, In IMAGE-MODE it is changing, in VIDEO-MODE it is fixed, but it may be lost
-            HFLogPrint(HF_LOG_INFO, "FaceID: %d - Conf: %.2f", multipleFaceData.trackIds[index], multipleFaceData.detConfidence[index]);
+            HFLogPrint(HF_LOG_INFO, "Lib: FaceID: %d - Conf: %.2f", multipleFaceData.trackIds[index], multipleFaceData.detConfidence[index]);
             // Print Head euler angle, It can often be used to judge the quality of a face by the Angle
             // of the head
             // HFLogPrint(HF_LOG_INFO, "Roll: %f, Yaw: %f, Pitch: %f", multipleFaceData.angles.roll[index], multipleFaceData.angles.yaw[index],       multipleFaceData.angles.pitch[index]);
@@ -157,13 +157,13 @@ HFMultipleFaceData detectFaces(HFImageStream imageStream, cv::Mat *imagePtr, boo
         // HFImageBitmapWriteToFile(drawImage, );
     }
 
-/*
-    ret = HFReleaseImageStream(imageStream);
-    if (ret != HSUCCEED)
-    {
-        HFLogPrint(HF_LOG_ERROR, "Lib: Release image stream error: %d", ret);
-    }
-*/
+    /*
+        ret = HFReleaseImageStream(imageStream);
+        if (ret != HSUCCEED)
+        {
+            HFLogPrint(HF_LOG_ERROR, "Lib: Release image stream error: %d", ret);
+        }
+    */
     return multipleFaceData;
 }
 
@@ -191,7 +191,7 @@ extern "C" void releaseSession()
     }
     else
     {
-        HFLogPrint(HF_LOG_ERROR, "Session not yet initialized");
+        HFLogPrint(HF_LOG_ERROR, "Lib: Session not yet initialized");
     }
 }
 
@@ -221,18 +221,18 @@ int getFaceEmbedding(HFMultipleFaceData multipleFaceData, HFImageStream imageStr
     HResult ret = HFCreateFaceFeature(&feature);
     if (ret != HSUCCEED)
     {
-        HFLogPrint(HF_LOG_ERROR, "Create face feature error: %d", ret);
+        HFLogPrint(HF_LOG_ERROR, "Lib: Create face feature error: %d", ret);
         return ret;
     }
 
     ret = HFFaceFeatureExtractCpy(session, imageStream, multipleFaceData.tokens[0], feature.data);
     if (ret != HSUCCEED)
     {
-        HFLogPrint(HF_LOG_ERROR, "Extract feature error: %d", ret);
+        HFLogPrint(HF_LOG_ERROR, "Lib: Extract feature error: %d", ret);
         return ret;
     }
     int size = feature.size;
-    HFLogPrint(HF_LOG_INFO, "Extract feature size: %d", size);
+    HFLogPrint(HF_LOG_INFO, "Lib: Extract feature size: %d", size);
     /*
     for (int i = 0; i < size; i++)
     {
@@ -253,43 +253,45 @@ HResult getFaceAttributes(HFFaceAttributeResult faceAttr, HFMultipleFaceData mul
     HResult ret = HFMultipleFacePipelineProcessOptional(session, imageStream, &multipleFaceData, HF_ENABLE_FACE_ATTRIBUTE);
     if (ret != HSUCCEED)
     {
-        HFLogPrint(HF_LOG_ERROR, "Failed to run pipeline: %d", ret);
+        HFLogPrint(HF_LOG_ERROR, "Lib: Failed to run pipeline: %d", ret);
         return 10;
     }
 
-    HFLogPrint(HF_LOG_INFO, "Loading face attributes.");
+    HFLogPrint(HF_LOG_INFO, "Lib: Loading face attributes.");
 
     ret = HFGetFaceAttributeResult(session, &faceAttr);
     if (ret != HSUCCEED)
     {
-        HFLogPrint(HF_LOG_ERROR, "Create face attr error: %d", ret);
+        HFLogPrint(HF_LOG_ERROR, "Lib: Create face attr error: %d", ret);
         return ret;
     }
-    HFLogPrint(HF_LOG_INFO, "Loaded face attributes.");
+    HFLogPrint(HF_LOG_INFO, "Lib: Loaded face attributes.");
     if (faceAttr.num <= 0)
     {
-        HFLogPrint(HF_LOG_ERROR, "No attr found");
+        HFLogPrint(HF_LOG_ERROR, "Lib: No attr found");
     }
     else
     {
-        HFLogPrint(HF_LOG_INFO, "Race: %d", faceAttr.race[0]);
-        HFLogPrint(HF_LOG_INFO, "Gender: %d", faceAttr.gender[0]);
-        HFLogPrint(HF_LOG_INFO, "AgeBracket: %d", faceAttr.ageBracket[0]);
+        HFLogPrint(HF_LOG_INFO, "Lib: Race: %d", faceAttr.race[0]);
+        HFLogPrint(HF_LOG_INFO, "Lib: Gender: %d", faceAttr.gender[0]);
+        HFLogPrint(HF_LOG_INFO, "Lib: AgeBracket: %d", faceAttr.ageBracket[0]);
     }
 
     return 0;
 }
 
-extern "C" HFFaceAttributeResult *faceAttributes(HFMultipleFaceData multipleFaceData, cv::Mat *imagePtr)
+extern "C" HFFaceAttributeResult *faceAttributes(HFMultipleFaceData *multipleFaceDataPtr, cv::Mat *imagePtr)
 {
+
     HFLogPrint(HF_LOG_INFO, "Lib: factAttributes");
+    HFFaceAttributeResult data = {0};
+    HFMultipleFaceData multipleFaceData = *multipleFaceDataPtr;
     cv::Mat image = *imagePtr;
     HFImageStream imageStream = ConvertCVImage(image);
-    HFFaceAttributeResult data = {};
     HResult ret = getFaceAttributes(data, multipleFaceData, imageStream);
     if (ret != HSUCCEED)
     {
-        HFLogPrint(HF_LOG_ERROR, "Failed to run pipeline: %d", ret);
+        HFLogPrint(HF_LOG_ERROR, "Lib: Failed to run pipeline: %d", ret);
     }
 
     HFFaceAttributeResult *faceAttr = new HFFaceAttributeResult(data);
@@ -308,6 +310,7 @@ extern "C" HFMultipleFaceData *detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
         int faceNum = data.detectedNum;
         HFLogPrint(HF_LOG_INFO, "Lib: Detected: %d", faceNum);
         // getFaceEmbedding(data, imageStream);
+        /*
         HFFaceAttributeResult attrData = {};
 
         HResult ret = getFaceAttributes(attrData, data, imageStream);
@@ -315,6 +318,7 @@ extern "C" HFMultipleFaceData *detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
         {
             HFLogPrint(HF_LOG_ERROR, "Lib: Failed to run pipeline: %d", ret);
         }
+        */
     }
     else
     {

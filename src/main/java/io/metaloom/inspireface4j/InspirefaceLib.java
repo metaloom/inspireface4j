@@ -29,6 +29,7 @@ import org.opencv.imgproc.Imgproc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.metaloom.inspireface4j.data.HFFaceAttributeResult;
 import io.metaloom.inspireface4j.data.HFMultipleFaceData;
 import io.metaloom.inspireface4j.data.HFaceRect;
 import io.metaloom.video4j.impl.MatProvider;
@@ -49,7 +50,7 @@ public class InspirefaceLib {
 
 	private static boolean initialized = false;
 
-	private static List<String> labels;
+	private static MemorySegment globalMultipleFaceData;
 
 	private static void checkInitialized() {
 		if (!initialized) {
@@ -129,14 +130,14 @@ public class InspirefaceLib {
 		//
 		MemorySegment rectsPointer = multipleFaceData.get(ValueLayout.ADDRESS,
 			HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("rects"))); // you need to calculate this
-		
+
 		MemorySegment confPointer = multipleFaceData.get(ValueLayout.ADDRESS,
 			HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("rects"))); // you need to calculate this
 		// offset
-		
+
 		MemorySegment confArray = MemorySegment.ofAddress(confPointer.address());
-		confArray = confArray.reinterpret(ValueLayout.JAVA_FLOAT.byteSize()*detectedNum);
-		
+		confArray = confArray.reinterpret(ValueLayout.JAVA_FLOAT.byteSize() * detectedNum);
+
 		MemorySegment rectsArray = MemorySegment.ofAddress(rectsPointer.address());
 		rectsArray = rectsArray.reinterpret(detectedNum * HFaceRect.FACE_RECT_LAYOUT.byteSize());
 		for (int i = 0; i < detectedNum; i++) {
@@ -238,7 +239,8 @@ public class InspirefaceLib {
 		try {
 			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
 			MemorySegment multipleFaceData = (MemorySegment) detectHandler.invoke(imageSeg, drawBoundingBoxes);
-			//return mapFaceDetections(multipleFaceData);
+			globalMultipleFaceData = multipleFaceData.reinterpret(HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteSize());
+			// return mapFaceDetections(multipleFaceData);
 			return new ArrayList<Detection>();
 		} catch (Throwable t) {
 			throw new RuntimeException("Failed to invoke detection", t);
@@ -250,5 +252,36 @@ public class InspirefaceLib {
 		Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
 		CVUtils.bufferedImageToMat(img, imageMat);
 		return detect(imageMat, drawBoundingBoxes);
+	}
+
+	public static void attributes(Mat imageMat, boolean drawAttributes) {
+		checkInitialized();
+
+		checkInitialized();
+
+		MethodHandle attrHandler = linker
+			.downcallHandle(
+				inspirefaceLibrary.findOrThrow("faceAttributes"),
+				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+
+		if (globalMultipleFaceData == null) {
+			throw new RuntimeException("Data is null - run detect first");
+		}
+		try {
+			MemorySegment imageAttr = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
+			MemorySegment attrData = (MemorySegment) attrHandler.invoke(globalMultipleFaceData, imageAttr);
+
+			System.out.println(attrData);
+			HFFaceAttributeResult attr = new HFFaceAttributeResult(attrData);
+			System.out.println("ATTR_NUM: " + attr.numFaces());
+			System.out.println("ATTR_RACE: " + attr.race());
+			System.out.println("ATTR_GENDER: " + attr.gender());
+			System.out.println("ATTR_AGE: " + attr.age());
+			// return mapFaceDetections(multipleFaceData);
+
+		} catch (Throwable t) {
+			throw new RuntimeException("Failed to invoke attributes", t);
+		}
+
 	}
 }
