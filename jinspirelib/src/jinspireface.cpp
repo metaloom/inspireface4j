@@ -246,7 +246,7 @@ int getFaceEmbedding(HFMultipleFaceData multipleFaceData, HFImageStream imageStr
     return 0;
 }
 
-HResult getFaceAttributes(HFFaceAttributeResult faceAttr, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
+HResult getFaceAttributes(HFFaceAttributeResult* faceAttrPtr, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
 {
     HFSession session = *globalSession.get();
 
@@ -259,23 +259,13 @@ HResult getFaceAttributes(HFFaceAttributeResult faceAttr, HFMultipleFaceData mul
 
     HFLogPrint(HF_LOG_INFO, "Lib: Loading face attributes.");
 
-    ret = HFGetFaceAttributeResult(session, &faceAttr);
+    ret = HFGetFaceAttributeResult(session, faceAttrPtr);
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Lib: Create face attr error: %d", ret);
         return ret;
     }
     HFLogPrint(HF_LOG_INFO, "Lib: Loaded face attributes.");
-    if (faceAttr.num <= 0)
-    {
-        HFLogPrint(HF_LOG_ERROR, "Lib: No attr found");
-    }
-    else
-    {
-        HFLogPrint(HF_LOG_INFO, "Lib: Race: %d", faceAttr.race[0]);
-        HFLogPrint(HF_LOG_INFO, "Lib: Gender: %d", faceAttr.gender[0]);
-        HFLogPrint(HF_LOG_INFO, "Lib: AgeBracket: %d", faceAttr.ageBracket[0]);
-    }
 
     return 0;
 }
@@ -284,14 +274,25 @@ extern "C" HFFaceAttributeResult *faceAttributes(HFMultipleFaceData *multipleFac
 {
 
     HFLogPrint(HF_LOG_INFO, "Lib: factAttributes");
-    HFFaceAttributeResult data = {0};
+    HFFaceAttributeResult data = {};
     HFMultipleFaceData multipleFaceData = *multipleFaceDataPtr;
     cv::Mat image = *imagePtr;
     HFImageStream imageStream = ConvertCVImage(image);
-    HResult ret = getFaceAttributes(data, multipleFaceData, imageStream);
+    HResult ret = getFaceAttributes(&data, multipleFaceData, imageStream);
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Lib: Failed to run pipeline: %d", ret);
+    }
+
+    if (data.num <= 0)
+    {
+        HFLogPrint(HF_LOG_ERROR, "Lib: No attr found");
+    }
+    else
+    {
+        HFLogPrint(HF_LOG_INFO, "Lib: Race: %d", data.race[0]);
+        HFLogPrint(HF_LOG_INFO, "Lib: Gender: %d", data.gender[0]);
+        HFLogPrint(HF_LOG_INFO, "Lib: AgeBracket: %d", data.ageBracket[0]);
     }
 
     HFFaceAttributeResult *faceAttr = new HFFaceAttributeResult(data);

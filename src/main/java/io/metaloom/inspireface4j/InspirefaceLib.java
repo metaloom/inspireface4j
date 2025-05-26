@@ -273,10 +273,12 @@ public class InspirefaceLib {
 
 			System.out.println(attrData);
 			HFFaceAttributeResult attr = new HFFaceAttributeResult(attrData);
-			System.out.println("ATTR_NUM: " + attr.numFaces());
-			System.out.println("ATTR_RACE: " + attr.race());
-			System.out.println("ATTR_GENDER: " + attr.gender());
-			System.out.println("ATTR_AGE: " + attr.age());
+			for (int i = 0; i < attr.numFaces(); i++) {
+				System.out.println("ATTR_NUM[" + i + "]: " + attr.numFaces());
+				System.out.println("ATTR_RACE[" + i + "]: " + attr.race(i));
+				System.out.println("ATTR_GENDER[" + i + "]: " + attr.gender(i));
+				System.out.println("ATTR_AGE[" + i + "]: " + attr.age(i));
+			}
 			// return mapFaceDetections(multipleFaceData);
 
 		} catch (Throwable t) {
