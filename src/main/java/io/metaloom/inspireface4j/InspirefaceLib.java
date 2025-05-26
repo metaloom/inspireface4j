@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.metaloom.inspireface4j.data.HFFaceAttributeResult;
+import io.metaloom.inspireface4j.data.HFFaceFeature;
 import io.metaloom.inspireface4j.data.HFMultipleFaceData;
 import io.metaloom.inspireface4j.data.HFaceRect;
 import io.metaloom.video4j.impl.MatProvider;
@@ -257,8 +258,6 @@ public class InspirefaceLib {
 	public static void attributes(Mat imageMat, boolean drawAttributes) {
 		checkInitialized();
 
-		checkInitialized();
-
 		MethodHandle attrHandler = linker
 			.downcallHandle(
 				inspirefaceLibrary.findOrThrow("faceAttributes"),
@@ -285,5 +284,31 @@ public class InspirefaceLib {
 			throw new RuntimeException("Failed to invoke attributes", t);
 		}
 
+	}
+
+	public static void embedding(Mat imageMat) {
+		checkInitialized();
+
+		MethodHandle attrHandler = linker
+			.downcallHandle(
+				inspirefaceLibrary.findOrThrow("faceEmbeddings"),
+				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+
+		if (globalMultipleFaceData == null) {
+			throw new RuntimeException("Data is null - run detect first");
+		}
+		try {
+			MemorySegment imageAttr = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
+			MemorySegment embeddingData = (MemorySegment) attrHandler.invoke(globalMultipleFaceData, imageAttr);
+
+			System.out.println(embeddingData);
+			HFFaceFeature attr = new HFFaceFeature(embeddingData);
+			System.out.println("Embedding size: " + attr.size());
+			
+			attr.data();
+
+		} catch (Throwable t) {
+			throw new RuntimeException("Failed to invoke embeddings", t);
+		}
 	}
 }
