@@ -195,44 +195,51 @@ extern "C" void releaseSession()
     }
 }
 
-int getFaceEmbedding(HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
+HFFaceFeature getFaceEmbedding(HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
 {
 
+//HFFaceFeature *featurePtr
     HFSession session = *globalSession.get();
-
+    //HFFaceFeature feature = *featurePtr;
+    HFFaceFeature feature ;
+    // Execute face tracking on the image
+    // HFMultipleFaceData multipleFaceData = {0};
     /*
-        // Execute face tracking on the image
-        HFMultipleFaceData multipleFaceData = {0};
-        HResult ret = HFExecuteFaceTrack(session, stream, &multipleFaceData); // Track faces in the image
-        if (ret != HSUCCEED)
-        {
-            HFLogPrint(HF_LOG_ERROR, "Run face track error: %d", ret);
-            return ret;
-        }
-        if (multipleFaceData.detectedNum == 0)
-        { // Check if any faces were detected
-            HFLogPrint(HF_LOG_ERROR, "No face was detected");
-            return ret;
-        }
-        */
+    HResult ret = HFExecuteFaceTrack(session, imageStream, &multipleFaceData); // Track faces in the image
+    if (ret != HSUCCEED)
+    {
+        HFLogPrint(HF_LOG_ERROR, "Run face track error: %d", ret);
+        return ret;
+    }
+    if (multipleFaceData.detectedNum == 0)
+    { // Check if any faces were detected
+        HFLogPrint(HF_LOG_ERROR, "No face was detected");
+        return ret;
+    }
+    */
+
+    auto faceNum = multipleFaceData.detectedNum;
+    HFLogPrint(HF_LOG_INFO, "Lib: Embedding Num of face: %d", faceNum);
 
     // Extract facial features from the first detected face, an interface that uses copy features in a comparison scenario
-    HFFaceFeature feature;
+    // HFFaceFeature feature = *featurePtr;
     HResult ret = HFCreateFaceFeature(&feature);
     if (ret != HSUCCEED)
     {
-        HFLogPrint(HF_LOG_ERROR, "Lib: Create face feature error: %d", ret);
-        return ret;
+        HFLogPrint(HF_LOG_ERROR, "Lib: Create face embedding error: %d", ret);
+        //return ret;
     }
 
+    // multipleFaceData
     ret = HFFaceFeatureExtractCpy(session, imageStream, multipleFaceData.tokens[0], feature.data);
     if (ret != HSUCCEED)
     {
-        HFLogPrint(HF_LOG_ERROR, "Lib: Extract feature error: %d", ret);
-        return ret;
+        HFLogPrint(HF_LOG_ERROR, "Lib: Extract embedding error: %d", ret);
+        //return ret;
     }
     int size = feature.size;
     HFLogPrint(HF_LOG_INFO, "Lib: Extract feature size: %d", size);
+
     /*
     for (int i = 0; i < size; i++)
     {
@@ -241,12 +248,12 @@ int getFaceEmbedding(HFMultipleFaceData multipleFaceData, HFImageStream imageStr
     */
 
     // Not in use need to release
-    HFReleaseFaceFeature(&feature);
+    // HFReleaseFaceFeature(&feature);
 
-    return 0;
+    return feature;
 }
 
-HResult getFaceAttributes(HFFaceAttributeResult* faceAttrPtr, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
+HResult getFaceAttributes(HFFaceAttributeResult *faceAttrPtr, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
 {
     HFSession session = *globalSession.get();
 
@@ -268,6 +275,38 @@ HResult getFaceAttributes(HFFaceAttributeResult* faceAttrPtr, HFMultipleFaceData
     HFLogPrint(HF_LOG_INFO, "Lib: Loaded face attributes.");
 
     return 0;
+}
+
+extern "C" HFFaceFeature *faceEmbeddings(HFMultipleFaceData *multipleFaceDataPtr, cv::Mat *imagePtr)
+{
+    HFLogPrint(HF_LOG_INFO, "Lib: faceEmbeddings");
+    
+    HFMultipleFaceData multipleFaceData = *multipleFaceDataPtr;
+    cv::Mat image = *imagePtr;
+    HFImageStream imageStream = ConvertCVImage(image);
+
+    HFFaceFeature data = getFaceEmbedding(multipleFaceData, imageStream);
+    /*
+    if (ret != HSUCCEED)
+    {
+        HFLogPrint(HF_LOG_ERROR, "Lib: Failed to run pipeline: %d", ret);
+    }*/
+
+    /*
+        if (data.num <= 0)
+        {
+            HFLogPrint(HF_LOG_ERROR, "Lib: No attr found");
+        }
+        else
+        {
+            HFLogPrint(HF_LOG_INFO, "Lib: Race: %d", data.race[0]);
+            HFLogPrint(HF_LOG_INFO, "Lib: Gender: %d", data.gender[0]);
+            HFLogPrint(HF_LOG_INFO, "Lib: AgeBracket: %d", data.ageBracket[0]);
+        }
+        */
+
+    HFFaceFeature *faceFeature = new HFFaceFeature(data);
+    return faceFeature;
 }
 
 extern "C" HFFaceAttributeResult *faceAttributes(HFMultipleFaceData *multipleFaceDataPtr, cv::Mat *imagePtr)
