@@ -30,7 +30,7 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 		List<Detection> detections = InspirefaceLib.detect(imageMat, true);
 		InspirefaceLib.logLevel(HFLogLevel.HF_LOG_DEBUG);
 		InspirefaceLib.attributes(imageMat, true);
-		InspirefaceLib.embedding(imageMat);
+		InspirefaceLib.embedding(imageMat, 1);
 		assertNotNull(detections);
 		// assertEquals(3, detections.size());
 		ImageUtils.show(imageMat);
@@ -39,7 +39,7 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 			System.out.println("conf: " + detection.conf());
 		}
 
-		Thread.sleep(1000);
+		Thread.sleep(2000);
 		// System.in.read();
 	}
 

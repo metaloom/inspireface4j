@@ -216,22 +216,20 @@ public class InspirefaceLib {
 
 	}
 
-	public static float[] embedding(Mat imageMat) {
+	public static float[] embedding(Mat imageMat, int faceNr) {
 		checkInitialized();
 
 		MethodHandle attrHandler = linker
 			.downcallHandle(
 				inspirefaceLibrary.findOrThrow("faceEmbeddings"),
-				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
 		if (globalMultipleFaceData == null) {
 			throw new RuntimeException("Data is null - run detect first");
 		}
 		try {
 			MemorySegment imageAttr = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
-			MemorySegment embeddingData = (MemorySegment) attrHandler.invoke(globalMultipleFaceData, imageAttr);
-
-			System.out.println(embeddingData);
+			MemorySegment embeddingData = (MemorySegment) attrHandler.invoke(globalMultipleFaceData, imageAttr, faceNr);
 			HFFaceFeature attr = new HFFaceFeature(embeddingData);
 			return attr.data();
 		} catch (Throwable t) {

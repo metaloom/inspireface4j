@@ -219,10 +219,12 @@ extern "C" void releaseSession()
     }
 }
 
-HResult getFaceEmbedding(HFFaceFeature *feature, HFMultipleFaceData multipleFaceData, HFImageStream imageStream)
+HResult getFaceEmbedding(HFFaceFeature *feature, HFMultipleFaceData multipleFaceData, HFImageStream imageStream, int faceNr)
 {
 
     HFSession session = *globalSession.get();
+
+    // TODO assert faceNr
 
     auto faceNum = multipleFaceData.detectedNum;
     HFLogPrint(HF_LOG_INFO, "Lib: Embedding Num of face: %d", faceNum);
@@ -235,7 +237,7 @@ HResult getFaceEmbedding(HFFaceFeature *feature, HFMultipleFaceData multipleFace
         return ret;
     }
 
-    ret = HFFaceFeatureExtractCpy(session, imageStream, multipleFaceData.tokens[0], (*feature).data);
+    ret = HFFaceFeatureExtractCpy(session, imageStream, multipleFaceData.tokens[faceNr], (*feature).data);
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Lib: Extract embedding error: %d", ret);
@@ -280,7 +282,7 @@ HResult getFaceAttributes(HFFaceAttributeResult *faceAttrPtr, HFMultipleFaceData
     return 0;
 }
 
-extern "C" HFFaceFeature *faceEmbeddings(HFMultipleFaceData *multipleFaceDataPtr, cv::Mat *imagePtr)
+extern "C" HFFaceFeature *faceEmbeddings(HFMultipleFaceData *multipleFaceDataPtr, cv::Mat *imagePtr, int faceNr)
 {
     if (LOG == HF_LOG_DEBUG)
     {
@@ -292,7 +294,7 @@ extern "C" HFFaceFeature *faceEmbeddings(HFMultipleFaceData *multipleFaceDataPtr
     HFImageStream imageStream = ConvertCVImage(image);
 
     HFFaceFeature *feature = new HFFaceFeature();
-    HResult ret = getFaceEmbedding(feature, multipleFaceData, imageStream);
+    HResult ret = getFaceEmbedding(feature, multipleFaceData, imageStream, faceNr);
     if (ret != HSUCCEED)
     {
         HFLogPrint(HF_LOG_ERROR, "Lib: Failed to run pipeline: %d", ret);
