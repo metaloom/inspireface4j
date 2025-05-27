@@ -3,13 +3,13 @@
 .settings
 .project
 .vscode
-target
+/target
 
 # Library
-insightface*
-InspireFace*
-inspireface*
-TensorRT*
+/insightface*
+/InspireFace*
+/inspireface*
+/TensorRT*
 
 # Aritfacts
 jinspirelib/build
