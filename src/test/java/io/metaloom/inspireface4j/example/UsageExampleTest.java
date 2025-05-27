@@ -29,7 +29,7 @@ public class UsageExampleTest {
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
 
-		InspirefaceLib.init(DEFAULT_PACK);
+		InspirefaceLib.init(DEFAULT_PACK, 640);
 
 		// Load the image and invoke the detection
 		BufferedImage img = ImageUtils.load(new File(imagePath));
@@ -37,7 +37,7 @@ public class UsageExampleTest {
 
 		// Print the detections
 		for (Detection detection : detections) {
-			//System.out.println(detection.label() + " = " + detection.conf() + " @ " + detection.box());
+			// System.out.println(detection.label() + " = " + detection.conf() + " @ " + detection.box());
 		}
 		// SNIPPET END image-usage.example
 	}
@@ -48,7 +48,7 @@ public class UsageExampleTest {
 
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
-		InspirefaceLib.init("InspireFace/test_res/pack/Pikachu");
+		InspirefaceLib.init("InspireFace/test_res/pack/Pikachu", 640);
 		SimpleImageViewer viewer = new SimpleImageViewer();
 
 		// Open the video using Video4j
@@ -83,7 +83,7 @@ public class UsageExampleTest {
 
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
-		InspirefaceLib.init("InspireFace/test_res/pack/Pikachu");
+		InspirefaceLib.init("InspireFace/test_res/pack/Pikachu", 640);
 
 		// Open the video using Video4j
 		try (VideoFile video = VideoFile.open("src/test/resources/3769953-hd_1920_1080_25fps.mp4")) {

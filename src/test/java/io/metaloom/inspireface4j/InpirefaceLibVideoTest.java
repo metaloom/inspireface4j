@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.opencv.core.Mat;
+import org.w3c.dom.Attr;
 
 import io.metaloom.video4j.VideoFile;
 import io.metaloom.video4j.VideoFrame;
@@ -25,7 +26,13 @@ public class InpirefaceLibVideoTest extends AbstractInspireFaceLibTest {
 			while ((frame = video.frame()) != null) {
 				Mat imageMat = frame.mat();
 				List<Detection> detections = InspirefaceLib.detect(imageMat, false);
+				InspirefaceLib.embedding(imageMat);
+				List<FaceAttributes> attrs = InspirefaceLib.attributes(imageMat, false);
+				//if (attrs.size() >= 1) {
+					//System.out.println(attrs.getFirst());
+				//}
 				drawDetections(detections, imageMat);
+
 				viewer.show(imageMat);
 			}
 			long dur = System.currentTimeMillis() - start;

@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import io.metaloom.inspireface4j.data.HFFaceAttributeResult;
 import io.metaloom.inspireface4j.data.HFFaceFeature;
+import io.metaloom.inspireface4j.data.HFLogLevel;
 import io.metaloom.inspireface4j.data.HFMultipleFaceData;
 import io.metaloom.inspireface4j.data.HFaceRect;
 import io.metaloom.video4j.impl.MatProvider;
@@ -59,76 +60,12 @@ public class InspirefaceLib {
 		}
 	}
 
-	// private static List<Detection> mapDetectionsArray(MemorySegment detectionArrayStruct) throws Throwable {
-	//
-	// MethodHandle freeDetectionHandler = linker.downcallHandle(
-	// inspirefaceLibrary.find("free_detection").orElseThrow(),
-	// FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
-	//
-	// detectionArrayStruct = detectionArrayStruct.reinterpret(HFMultipleFaceDataLayout.size());
-	//
-	// System.out.println("--------------");
-	// int d2 = HFMultipleFaceDataLayout.getDetectedNums(detectionArrayStruct);
-	// System.out.println("d2: " + d2);
-	// MemorySegment dataPtr = detectionArrayStruct.get(ValueLayout.ADDRESS, 0);
-	// int detectionCount = detectionArrayStruct.get(ValueLayout.JAVA_INT, ValueLayout.ADDRESS.byteSize());
-	// dataPtr = dataPtr.reinterpret(DetectionMemoryLayout.size() * detectionCount);
-	//
-	// if (logger.isDebugEnabled()) {
-	// logger.debug("Received " + detectionCount + " detections");
-	// logger.debug("Got " + detectionArrayStruct + " from function.");
-	// }
-	//
-	// // Read BoundingBox elements
-	// List<Detection> detections = new ArrayList<>();
-	// long structSize = DetectionMemoryLayout.size();
-	// for (long i = 0; i < detectionCount; i++) {
-	// MemorySegment detectionMemory = dataPtr.asSlice(i * structSize, structSize);
-	// float conf = DetectionMemoryLayout.getConf(detectionMemory);
-	// int clazz = DetectionMemoryLayout.getClassId(detectionMemory);
-	// int x = detectionMemory.get(JINT, 0);
-	// int y = detectionMemory.get(JINT, JINT.byteSize());
-	// int width = detectionMemory.get(JINT, 2 * JINT.byteSize());
-	// int height = detectionMemory.get(JINT, 3 * JINT.byteSize());
-	// BoundingBox bbox = new BoundingBox(x, y, width, height);
-	// detections.add(new Detection(bbox, conf, clazz));
-	// }
-	//
-	// // Print results
-	// // detections.forEach(System.out::println);
-	//
-	// // Free the native memory
-	// freeDetectionHandler.invoke(detectionArrayStruct);
-	// return detections;
-	//
-	// }
-
 	private static List<Detection> mapFaceDetections(MemorySegment multipleFaceData) {
 		List<Detection> detections = new ArrayList<>();
-
 		HFMultipleFaceData faceData = new HFMultipleFaceData(multipleFaceData);
-		// System.out.println("Detections: " + faceData.detectedNum());
-		// if (faceData.detectedNum() >= 1) {
-		// MemorySegment rectData = faceData.rectsMemory();
-		// HFaceRect rect = new HFaceRect(rectData, 0);
-		// System.out.println(rect);
-		// }
-
-		// System.out.println("---------");
-		// // System.out.println("SIZE: " + HFMultipleFaceDataLayout.size());
-		// multipleFaceData = multipleFaceData.reinterpret(HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteSize());
 		multipleFaceData = faceData.segment();
-		//
-		//
-		//
 		int detectedNum = multipleFaceData.get(ValueLayout.JAVA_INT, 0);
-		//
-		//
-		////		VarHandle DETECTED_NUM = HFMultipleFaceDataLayout.DETECTION_ARRAY_LAYOUT.varHandle(
-////			MemoryLayout.PathElement.groupElement("detectedNum"));
-////		int numFaces = (int) DETECTED_NUM.get(multipleFaceData, 0L);
-////		System.out.println("NUM2: " + numFaces);
-		//
+
 		MemorySegment rectsPointer = multipleFaceData.get(ValueLayout.ADDRESS,
 			HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("rects"))); // you need to calculate this
 
@@ -152,22 +89,8 @@ public class InspirefaceLib {
 			int height = (int) HFaceRect.HEIGHT_HANDLE.get(rect, 0);
 
 			detections.add(new Detection(new BoundingBox(x, y, width, height), conf));
-			System.out.printf("Face[%d] - x: %d, y: %d, width: %d, height: %d - Conf: %.2f %n", i, x, y, width, height, conf);
+			// System.out.printf("Face[%d] - x: %d, y: %d, width: %d, height: %d - Conf: %.2f %n", i, x, y, width, height, conf);
 		}
-
-		// // Rects
-		// SequenceLayout pointsLayout = MemoryLayout.sequenceLayout(detectedNum, HFMultipleFaceDataLayout.FACE_RECT_LAYOUT);
-		// VarHandle xHandle = pointsLayout.varHandle(MemoryLayout.PathElement.sequenceElement(),
-		// MemoryLayout.PathElement.groupElement("x"));
-
-		// for (int i = 0; i < detectedNum; i++) {
-		// System.out.println("X[" + i +"] " + xHandle.get(multipleFaceData, 0, i));
-		// }
-		// MemorySegment rect = HFMultipleFaceDataLayout.RECTS_HANDLER..get(multipleFaceData, 0L);
-
-		// System.out.println("Code: " + code);
-		// List<Detection> results = mapDetectionsArray(detectionArrayStruct);
-		// return results;
 
 		return detections;
 	}
@@ -203,7 +126,12 @@ public class InspirefaceLib {
 		}
 	}
 
-	public static void init(String modelPath) {
+	/**
+	 * 
+	 * @param modelPath
+	 * @param detectPixelLevel Usually 160, 192, 256, 320, 640
+	 */
+	public static void init(String modelPath, int detectPixelLevel) {
 		if (initialized) {
 			throw new RuntimeException("InspirefaceLib already initialized");
 		}
@@ -217,12 +145,12 @@ public class InspirefaceLib {
 		MethodHandle initHandler = linker
 			.downcallHandle(
 				inspirefaceLibrary.findOrThrow("initializeSession"),
-				FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+				FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
 		try (Arena arena = Arena.ofConfined()) {
 			// MemorySegment labelsPathMem = arena.allocateFrom(labelsPath);
 			MemorySegment modelPathMem = arena.allocateFrom(modelPath);
-			initHandler.invoke(modelPathMem);
+			initHandler.invoke(modelPathMem, detectPixelLevel);
 			initialized = true;
 		} catch (Throwable t) {
 			throw new RuntimeException("Failed to initialize InspirefaceLib", t);
@@ -241,8 +169,8 @@ public class InspirefaceLib {
 			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
 			MemorySegment multipleFaceData = (MemorySegment) detectHandler.invoke(imageSeg, drawBoundingBoxes);
 			globalMultipleFaceData = multipleFaceData.reinterpret(HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteSize());
-			// return mapFaceDetections(multipleFaceData);
-			return new ArrayList<Detection>();
+			return mapFaceDetections(multipleFaceData);
+			// return new ArrayList<Detection>();
 		} catch (Throwable t) {
 			throw new RuntimeException("Failed to invoke detection", t);
 		}
@@ -255,7 +183,7 @@ public class InspirefaceLib {
 		return detect(imageMat, drawBoundingBoxes);
 	}
 
-	public static void attributes(Mat imageMat, boolean drawAttributes) {
+	public static List<FaceAttributes> attributes(Mat imageMat, boolean drawAttributes) {
 		checkInitialized();
 
 		MethodHandle attrHandler = linker
@@ -270,14 +198,16 @@ public class InspirefaceLib {
 			MemorySegment imageAttr = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
 			MemorySegment attrData = (MemorySegment) attrHandler.invoke(globalMultipleFaceData, imageAttr);
 
-			System.out.println(attrData);
 			HFFaceAttributeResult attr = new HFFaceAttributeResult(attrData);
+			List<FaceAttributes> attributes = new ArrayList<>();
 			for (int i = 0; i < attr.numFaces(); i++) {
-				System.out.println("ATTR_NUM[" + i + "]: " + attr.numFaces());
-				System.out.println("ATTR_RACE[" + i + "]: " + attr.race(i));
-				System.out.println("ATTR_GENDER[" + i + "]: " + attr.gender(i));
-				System.out.println("ATTR_AGE[" + i + "]: " + attr.age(i));
+				attributes.add(new FaceAttributes(attr.race(i), attr.gender(i), attr.age(i)));
+//				System.out.println("ATTR_NUM[" + i + "]: " + attr.numFaces());
+//				System.out.println("ATTR_RACE[" + i + "]: " + attr.race(i));
+//				System.out.println("ATTR_GENDER[" + i + "]: " + attr.gender(i));
+//				System.out.println("ATTR_AGE[" + i + "]: " + attr.age(i));
 			}
+			return attributes;
 			// return mapFaceDetections(multipleFaceData);
 
 		} catch (Throwable t) {
@@ -286,7 +216,7 @@ public class InspirefaceLib {
 
 	}
 
-	public static void embedding(Mat imageMat) {
+	public static float[] embedding(Mat imageMat) {
 		checkInitialized();
 
 		MethodHandle attrHandler = linker
@@ -303,10 +233,19 @@ public class InspirefaceLib {
 
 			System.out.println(embeddingData);
 			HFFaceFeature attr = new HFFaceFeature(embeddingData);
-			System.out.println("Embedding size: " + attr.size());
-			
-			attr.data();
+			return attr.data();
+		} catch (Throwable t) {
+			throw new RuntimeException("Failed to invoke embeddings", t);
+		}
+	}
 
+	public static void logLevel(HFLogLevel level) {
+		MethodHandle levelHandler = linker
+			.downcallHandle(
+				inspirefaceLibrary.findOrThrow("logLevel"),
+				FunctionDescriptor.ofVoid(ValueLayout.JAVA_INT));
+		try {
+			levelHandler.invoke(level.ordinal());
 		} catch (Throwable t) {
 			throw new RuntimeException("Failed to invoke embeddings", t);
 		}
