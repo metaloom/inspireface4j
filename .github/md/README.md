@@ -10,6 +10,8 @@ Supported features:
 
 Video processing can be by using the libary in combination with [Video4j](https://github.com/metaloom/video4j).
 
+![VideoPlayer](.github/md/output.gif)
+
 ## Limitations
 
 Currently only AMD64 Linux is supported. Support for other platforms is not planned.
@@ -63,7 +65,6 @@ Video Example
 ### Building native code
 
 ```bash
-
 # Download and extract inspireface-linux-x86-ubuntu18-1.2.1.zip from https://github.com/HyperInspire/InspireFace/releases
 cd  inspireface4j
 wget https://github.com/HyperInspire/InspireFace/releases/download/v1.2.1/inspireface-linux-x86-ubuntu18-1.2.1.zip
@@ -75,7 +76,7 @@ cd jinspirelib
 
 ### Notes for building from source
 
-The CMakeLists.txt needs to be adapted to include all the different sources (e.g inspireface + inspirecv)
+The `CMakeLists.txt` needs to be adapted to include all the different sources (e.g inspireface + inspirecv)
 
 ```bash
 # Clone inspireface - my Head Rev: efb5639ec66d4e94004e4d16f34f44630179f95a
