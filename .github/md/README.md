@@ -1,9 +1,19 @@
 # InspireFace4J
 
+InspireFace4J provides a Java-Native binding using FFM to the [InspireFace](https://github.com/HyperInspire/InspireFace) face detection library.
+
+Supported features:
+
+* Face detection (Boundingbox + Confidence)
+* Face attribute extraction
+* Face embedding extraction
+
+Video processing can be by using the libary in combination with [Video4j](https://github.com/metaloom/video4j).
 
 ## Limitations
 
 Currently only AMD64 Linux is supported. Support for other platforms is not planned.
+CUDA support using TensorRT is currently not working.
 
 ## Usage
 
@@ -22,7 +32,7 @@ mkdir packs && cd packs
 wget https://github.com/HyperInspire/InspireFace/releases/download/v1.x/Pikachu
 wget https://github.com/HyperInspire/InspireFace/releases/download/v1.x/Megatron
 
-# Not supported:
+# Not supported (Missing TensorRT support)
 # wget https://github.com/HyperInspire/InspireFace/releases/download/v1.x/Megatron_TRT
 
 ```
