@@ -1,4 +1,4 @@
-package io.metaloom.inspireface4j.data;
+package io.metaloom.inspireface4j.data.internal;
 
 import java.lang.foreign.GroupLayout;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
@@ -6,6 +6,10 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.VarHandle;
+
+import io.metaloom.inspireface4j.data.AgeBracket;
+import io.metaloom.inspireface4j.data.Gender;
+import io.metaloom.inspireface4j.data.Race;
 
 public class HFFaceAttributeResult {
 

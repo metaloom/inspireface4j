@@ -4,8 +4,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.opencv.core.Mat;
-import org.w3c.dom.Attr;
 
+import io.metaloom.inspireface4j.data.FaceDetections;
 import io.metaloom.video4j.VideoFile;
 import io.metaloom.video4j.VideoFrame;
 import io.metaloom.video4j.opencv.CVUtils;
@@ -18,26 +18,28 @@ public class InpirefaceLibVideoTest extends AbstractInspireFaceLibTest {
 		SimpleImageViewer viewer = new SimpleImageViewer();
 
 		// try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
-		try (VideoFile video = VideoFile.open("/extra/vid/1.avi")) {
-			// video.seekToFrameRatio(0.1);
+		try (VideoFile video = VideoFile.open("/extra/vid/4.mkv")) {
+			video.seekToFrameRatio(0.3);
 			long start = System.currentTimeMillis();
 
 			VideoFrame frame;
 			while ((frame = video.frame()) != null) {
 				Mat imageMat = frame.mat();
-				List<Detection> detections = InspirefaceLib.detect(imageMat, false);
-				InspirefaceLib.embedding(imageMat);
-				List<FaceAttributes> attrs = InspirefaceLib.attributes(imageMat, false);
-				//if (attrs.size() >= 1) {
-					//System.out.println(attrs.getFirst());
-				//}
+				FaceDetections detections = InspirefaceLib.detect(imageMat, false);
+				if (!detections.isEmpty()) {
+					//InspirefaceLib.embedding(imageMat, detections, 0);
+					List<FaceAttributes> attrs = InspirefaceLib.attributes(imageMat, detections, true);
+				}
+				// if (attrs.size() >= 1) {
+				// System.out.println(attrs.getFirst());
+				// }
 				drawDetections(detections, imageMat);
 
 				viewer.show(imageMat);
 			}
 			long dur = System.currentTimeMillis() - start;
 			System.out.println("Took " + dur);
-			Thread.sleep(100);
+			Thread.sleep(50);
 		}
 
 	}

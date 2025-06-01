@@ -1,4 +1,4 @@
-package io.metaloom.inspireface4j.data;
+package io.metaloom.inspireface4j.data.internal;
 
 import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.*;
@@ -39,6 +39,10 @@ public class HFFaceFeature {
 			data[i] = component;
 		}
 		return data;
+	}
+
+	public MemorySegment segment() {
+		return segment;
 	}
 
 }

@@ -346,7 +346,6 @@ extern "C" HFMultipleFaceData *detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
     cv::Mat image = *imagePtr;
     HFImageStream imageStream = ConvertCVImage(image);
     HFMultipleFaceData data = detectFaces(imageStream, imagePtr, drawBoundingBoxes);
-    // HFLogPrint(HF_LOG_INFO, "Lib: detected %d", data.detectedNum);
     if (LOG == HF_LOG_DEBUG)
     {
         if (data.detectedNum != 0)
@@ -360,13 +359,11 @@ extern "C" HFMultipleFaceData *detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
         }
     }
 
-    /*
-        HResult ret = HFReleaseImageStream(imageStream);
-        if (ret != HSUCCEED)
-        {
-            HFLogPrint(HF_LOG_ERROR, "Release image stream error: %d", ret);
-        }
-        */
+    HResult ret = HFReleaseImageStream(imageStream);
+    if (ret != HSUCCEED && LOG == HF_LOG_DEBUG)
+    {
+        HFLogPrint(HF_LOG_DEBUG, "Release image stream error: %d", ret);
+    }
 
     HFMultipleFaceData *multipleFaceData = new HFMultipleFaceData(data);
     return multipleFaceData;

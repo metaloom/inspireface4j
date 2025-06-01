@@ -4,13 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.opencv.core.Mat;
 import org.opencv.imgproc.Imgproc;
 
-import io.metaloom.inspireface4j.data.HFLogLevel;
+import io.metaloom.inspireface4j.data.FaceDetections;
+import io.metaloom.inspireface4j.data.internal.HFLogLevel;
 import io.metaloom.video4j.impl.MatProvider;
 import io.metaloom.video4j.opencv.CVUtils;
 import io.metaloom.video4j.utils.ImageUtils;
@@ -27,10 +27,10 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 		CVUtils.bufferedImageToMat(img, imageMat);
 
 		System.out.println("Detect");
-		List<Detection> detections = InspirefaceLib.detect(imageMat, true);
+		FaceDetections detections = InspirefaceLib.detect(imageMat, true);
 		InspirefaceLib.logLevel(HFLogLevel.HF_LOG_DEBUG);
-		InspirefaceLib.attributes(imageMat, true);
-		InspirefaceLib.embedding(imageMat, 1);
+		InspirefaceLib.attributes(imageMat,  detections, true);
+		InspirefaceLib.embedding(imageMat, detections, 1);
 		assertNotNull(detections);
 		// assertEquals(3, detections.size());
 		ImageUtils.show(imageMat);

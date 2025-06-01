@@ -25,15 +25,18 @@ import java.util.List;
 import java.util.Locale;
 
 import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.metaloom.inspireface4j.data.HFFaceAttributeResult;
-import io.metaloom.inspireface4j.data.HFFaceFeature;
-import io.metaloom.inspireface4j.data.HFLogLevel;
-import io.metaloom.inspireface4j.data.HFMultipleFaceData;
-import io.metaloom.inspireface4j.data.HFaceRect;
+import io.metaloom.inspireface4j.data.FaceDetections;
+import io.metaloom.inspireface4j.data.internal.HFFaceAttributeResult;
+import io.metaloom.inspireface4j.data.internal.HFFaceFeature;
+import io.metaloom.inspireface4j.data.internal.HFLogLevel;
+import io.metaloom.inspireface4j.data.internal.HFMultipleFaceData;
+import io.metaloom.inspireface4j.data.internal.HFaceRect;
 import io.metaloom.video4j.impl.MatProvider;
 import io.metaloom.video4j.opencv.CVUtils;
 
@@ -52,17 +55,17 @@ public class InspirefaceLib {
 
 	private static boolean initialized = false;
 
-	private static MemorySegment globalMultipleFaceData;
+	// private static MemorySegment globalMultipleFaceData;
 
 	private static void checkInitialized() {
 		if (!initialized) {
-			throw new RuntimeException("InspirefaceLib not initialized");
+			throw new Inspireface4jException("InspirefaceLib not initialized");
 		}
 	}
 
-	private static List<Detection> mapFaceDetections(MemorySegment multipleFaceData) {
-		List<Detection> detections = new ArrayList<>();
+	private static FaceDetections mapFaceDetections(MemorySegment multipleFaceData) {
 		HFMultipleFaceData faceData = new HFMultipleFaceData(multipleFaceData);
+		FaceDetections detections = new FaceDetections(faceData);
 		multipleFaceData = faceData.segment();
 		int detectedNum = multipleFaceData.get(ValueLayout.JAVA_INT, 0);
 
@@ -122,24 +125,25 @@ public class InspirefaceLib {
 			return SymbolLookup.loaderLookup();
 			// inspirefaceLib = SymbolLookup.libraryLookup(libPath, arena);
 		} catch (Exception e) {
-			throw new RuntimeException("Failed to load native library.", e);
+			throw new Inspireface4jException("Failed to load native library.", e);
 		}
 	}
 
 	/**
 	 * 
 	 * @param modelPath
-	 * @param detectPixelLevel Usually 160, 192, 256, 320, 640
+	 * @param detectPixelLevel
+	 *            Usually 160, 192, 256, 320, 640
 	 */
 	public static void init(String modelPath, int detectPixelLevel) {
 		if (initialized) {
-			throw new RuntimeException("InspirefaceLib already initialized");
+			throw new Inspireface4jException("InspirefaceLib already initialized");
 		}
 		inspirefaceLibrary = loadLib();
 
 		Path mPath = Paths.get(modelPath);
 		if (!Files.exists(mPath)) {
-			throw new RuntimeException("Unable to locate model with path " + mPath);
+			throw new Inspireface4jException("Unable to locate model with path " + mPath);
 		}
 
 		MethodHandle initHandler = linker
@@ -153,11 +157,11 @@ public class InspirefaceLib {
 			initHandler.invoke(modelPathMem, detectPixelLevel);
 			initialized = true;
 		} catch (Throwable t) {
-			throw new RuntimeException("Failed to initialize InspirefaceLib", t);
+			throw new Inspireface4jException("Failed to initialize InspirefaceLib", t);
 		}
 	}
 
-	public static List<Detection> detect(Mat imageMat, boolean drawBoundingBoxes) {
+	public static FaceDetections detect(Mat imageMat, boolean drawBoundingBoxes) {
 		checkInitialized();
 
 		MethodHandle detectHandler = linker
@@ -168,11 +172,10 @@ public class InspirefaceLib {
 		try {
 			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
 			MemorySegment multipleFaceData = (MemorySegment) detectHandler.invoke(imageSeg, drawBoundingBoxes);
-			globalMultipleFaceData = multipleFaceData.reinterpret(HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteSize());
+			multipleFaceData = multipleFaceData.reinterpret(HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteSize());
 			return mapFaceDetections(multipleFaceData);
-			// return new ArrayList<Detection>();
 		} catch (Throwable t) {
-			throw new RuntimeException("Failed to invoke detection", t);
+			throw new Inspireface4jException("Failed to invoke detection", t);
 		}
 
 	}
@@ -183,7 +186,7 @@ public class InspirefaceLib {
 		return detect(imageMat, drawBoundingBoxes);
 	}
 
-	public static List<FaceAttributes> attributes(Mat imageMat, boolean drawAttributes) {
+	public static List<FaceAttributes> attributes(Mat imageMat, FaceDetections detections, boolean drawAttributes) {
 		checkInitialized();
 
 		MethodHandle attrHandler = linker
@@ -191,32 +194,51 @@ public class InspirefaceLib {
 				inspirefaceLibrary.findOrThrow("faceAttributes"),
 				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
-		if (globalMultipleFaceData == null) {
-			throw new RuntimeException("Data is null - run detect first");
-		}
 		try {
 			MemorySegment imageAttr = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
-			MemorySegment attrData = (MemorySegment) attrHandler.invoke(globalMultipleFaceData, imageAttr);
+			MemorySegment attrData = (MemorySegment) attrHandler.invoke(detections.data().segment(), imageAttr);
 
 			HFFaceAttributeResult attr = new HFFaceAttributeResult(attrData);
 			List<FaceAttributes> attributes = new ArrayList<>();
 			for (int i = 0; i < attr.numFaces(); i++) {
+
 				attributes.add(new FaceAttributes(attr.race(i), attr.gender(i), attr.age(i)));
-//				System.out.println("ATTR_NUM[" + i + "]: " + attr.numFaces());
-//				System.out.println("ATTR_RACE[" + i + "]: " + attr.race(i));
-//				System.out.println("ATTR_GENDER[" + i + "]: " + attr.gender(i));
-//				System.out.println("ATTR_AGE[" + i + "]: " + attr.age(i));
+				if (drawAttributes) {
+					Detection detection = detections.get(i);
+					BoundingBox box = detection.box();
+					Point p = new Point(box.x, box.y - 5);
+					Scalar color = new Scalar(200f, 200f, 0f);
+					float fontWeight = 0.8f;
+					int thickness = 1;
+					int yStep = 12;
+					CVUtils.drawText(imageMat, "Race: " + attr.race(i).name(), p, fontWeight, color, thickness);
+					p.y = p.y - yStep;
+					CVUtils.drawText(imageMat, "Gender: " + attr.gender(i).name(), p, fontWeight, color, thickness);
+					p.y = p.y - yStep;
+					CVUtils.drawText(imageMat, "Age: " + attr.age(i).name(), p, fontWeight, color, thickness);
+				}
 			}
 			return attributes;
-			// return mapFaceDetections(multipleFaceData);
-
 		} catch (Throwable t) {
-			throw new RuntimeException("Failed to invoke attributes", t);
+			throw new Inspireface4jException("Failed to invoke attributes", t);
 		}
 
 	}
 
-	public static float[] embedding(Mat imageMat, int faceNr) {
+	public static void releaseFaceFeature(HFFaceFeature feature) {
+		MethodHandle methodHandler = linker
+			.downcallHandle(
+				inspirefaceLibrary.findOrThrow("releaseFaceFeature"),
+				FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+
+		try {
+			methodHandler.invoke(feature.segment());
+		} catch (Throwable t) {
+			throw new Inspireface4jException("Failed to release native face data", t);
+		}
+	}
+
+	public static float[] embedding(Mat imageMat, FaceDetections detections, int faceNr) {
 		checkInitialized();
 
 		MethodHandle attrHandler = linker
@@ -224,12 +246,9 @@ public class InspirefaceLib {
 				inspirefaceLibrary.findOrThrow("faceEmbeddings"),
 				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
-		if (globalMultipleFaceData == null) {
-			throw new RuntimeException("Data is null - run detect first");
-		}
 		try {
 			MemorySegment imageAttr = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
-			MemorySegment embeddingData = (MemorySegment) attrHandler.invoke(globalMultipleFaceData, imageAttr, faceNr);
+			MemorySegment embeddingData = (MemorySegment) attrHandler.invoke(detections.data().segment(), imageAttr, faceNr);
 			HFFaceFeature attr = new HFFaceFeature(embeddingData);
 			return attr.data();
 		} catch (Throwable t) {
@@ -245,7 +264,7 @@ public class InspirefaceLib {
 		try {
 			levelHandler.invoke(level.ordinal());
 		} catch (Throwable t) {
-			throw new RuntimeException("Failed to invoke embeddings", t);
+			throw new Inspireface4jException("Failed to invoke embeddings", t);
 		}
 	}
 }

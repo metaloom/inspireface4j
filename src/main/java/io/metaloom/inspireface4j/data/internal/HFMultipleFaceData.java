@@ -1,4 +1,4 @@
-package io.metaloom.inspireface4j.data;
+package io.metaloom.inspireface4j.data.internal;
 
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
