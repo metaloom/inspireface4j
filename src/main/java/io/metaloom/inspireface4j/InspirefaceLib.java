@@ -180,10 +180,12 @@ public class InspirefaceLib {
 
 	}
 
-	public static List<Detection> detect(BufferedImage img, boolean drawBoundingBoxes) {
+	public static FaceDetections detect(BufferedImage img) {
 		Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
 		CVUtils.bufferedImageToMat(img, imageMat);
-		return detect(imageMat, drawBoundingBoxes);
+		FaceDetections detections = detect(imageMat, false);
+		MatProvider.released(imageMat);
+		return detections;
 	}
 
 	public static List<FaceAttributes> attributes(Mat imageMat, FaceDetections detections, boolean drawAttributes) {
@@ -225,7 +227,7 @@ public class InspirefaceLib {
 
 	}
 
-	public static void releaseFaceFeature(HFFaceFeature feature) {
+	public static void releaseFaceFeature(HFMultipleFaceData feature) {
 		MethodHandle methodHandler = linker
 			.downcallHandle(
 				inspirefaceLibrary.findOrThrow("releaseFaceFeature"),

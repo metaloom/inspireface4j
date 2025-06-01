@@ -11,6 +11,9 @@
 /inspireface*
 /TensorRT*
 
+# Models
+/packs
+
 # Aritfacts
 jinspirelib/build
 jinspirelib/*.jpg

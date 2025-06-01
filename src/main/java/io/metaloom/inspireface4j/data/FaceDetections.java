@@ -3,6 +3,7 @@ package io.metaloom.inspireface4j.data;
 import java.util.ArrayList;
 
 import io.metaloom.inspireface4j.Detection;
+import io.metaloom.inspireface4j.InspirefaceLib;
 import io.metaloom.inspireface4j.data.internal.HFMultipleFaceData;
 
 public class FaceDetections extends ArrayList<Detection> {
@@ -13,9 +14,15 @@ public class FaceDetections extends ArrayList<Detection> {
 	public FaceDetections(HFMultipleFaceData data) {
 		this.data = data;
 	}
-	
+
 	public HFMultipleFaceData data() {
 		return data;
+	}
+
+	public void releaseData() {
+		if (data != null) {
+			InspirefaceLib.releaseFaceFeature(data);
+		}
 	}
 
 }

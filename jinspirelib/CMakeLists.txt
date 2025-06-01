@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(yolo_ort)
 
-option(INSPIREFACE_SRC_DIR "Path to source InspireFace directory." STRING)
-message(STATUS "INSPIREFACE_SRC_DIR: ${INSPIREFACE_SRC_DIR}")
+option(INSPIREFACE_INCLUDE_DIR "Path to source InspireFace include directory." STRING)
+message(STATUS "INSPIREFACE_INCLUDE_DIR: ${INSPIREFACE_INCLUDE_DIR}")
 
 option(INSPIREFACE_LIB_DIR "Path to built InspireFace directory." STRING)
 message(STATUS "INSPIREFACE_LIB_DIR: ${INSPIREFACE_LIB_DIR}")
@@ -12,18 +12,18 @@ message(STATUS "TENSOR_RT_DIR: ${TENSOR_RT_DIR}")
 
 find_package(OpenCV REQUIRED)
 
-include_directories("../InspireFace/cpp/inspireface/c_api/")
-include_directories("../InspireFace/cpp/inspireface/include/inspireface/")
-include_directories("../InspireFace/cpp/")
-include_directories("../InspireFace/3rdparty/InspireCV/include/")
-include_directories("../InspireFace/3rdparty/InspireCV/src/")
+#include_directories("../InspireFace/cpp/inspireface/c_api/")
+#include_directories("../InspireFace/cpp/inspireface/include/inspireface/")
+#include_directories("../InspireFace/cpp/")
+#include_directories("../InspireFace/3rdparty/InspireCV/include/")
+#include_directories("../InspireFace/3rdparty/InspireCV/src/")
+#include_directories("../InspireFace/cpp/inspireface")
+#include_directories("../InspireFace/3rdparty/yaml-cpp/include")
+#include_directories("../InspireFace/3rdparty/MNN/include")
 
-include_directories("../InspireFace/cpp/inspireface")
-include_directories("../InspireFace/3rdparty/yaml-cpp/include")
-include_directories("../InspireFace/3rdparty/MNN/include")
 
-#include_directories("../InspireFace/cpp/inspireface/initialization_module/")
-#include_directories("../InspireFace/cpp/inspireface/")
+include_directories("${INSPIREFACE_INCLUDE_DIR}")
+
 
 add_library(jinspireface SHARED
     src/jinspireface.cpp)
@@ -33,10 +33,11 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #target_include_directories(jinspireface PUBLIC "${INSPIREFACE_SRC_DIR}/include")
-target_compile_features(jinspireface PRIVATE cxx_std_14)
-target_link_libraries(jinspireface ${OpenCV_LIBS})
 #target_link_libraries(jinspireface "${TENSOR_RT_DIR}/lib")
 #target_link_libraries(jinspireface "${TENSOR_RT_DIR}/targets/x86_64-linux-gnu/lib")
+
+target_compile_features(jinspireface PRIVATE cxx_std_14)
+target_link_libraries(jinspireface ${OpenCV_LIBS})
 target_link_libraries(jinspireface "${INSPIREFACE_LIB_DIR}/libInspireFace.so")
 
 

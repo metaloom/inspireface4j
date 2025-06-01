@@ -6,25 +6,30 @@ import java.io.IOException;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.opencv.core.Mat;
+import org.opencv.imgproc.Imgproc;
 
 import io.metaloom.inspireface4j.BoundingBox;
 import io.metaloom.inspireface4j.Detection;
+import io.metaloom.inspireface4j.FaceAttributes;
 import io.metaloom.inspireface4j.InspirefaceLib;
+import io.metaloom.inspireface4j.data.FaceDetections;
 import io.metaloom.video4j.Video4j;
 import io.metaloom.video4j.VideoFile;
 import io.metaloom.video4j.VideoFrame;
+import io.metaloom.video4j.impl.MatProvider;
 import io.metaloom.video4j.opencv.CVUtils;
 import io.metaloom.video4j.utils.ImageUtils;
 import io.metaloom.video4j.utils.SimpleImageViewer;
 
 public class UsageExampleTest {
 
-	private static final String DEFAULT_PACK = "InspireFace/test_res/pack/Pikachu";
+	private static final String DEFAULT_PACK = "packs/Pikachu";
 
 	@Test
-	public void testImageUsageExample() throws IOException {
+	public void testImageUsageExample() throws IOException, InterruptedException {
 		// SNIPPET START image-usage.example
-		String imagePath = "insightface/cpp-package/inspireface/test_res/data/crop/crop.png";
+		String imagePath = "src/test/resources/pexels-olly-3812743_1k_lower.jpg";
 
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
@@ -33,13 +38,22 @@ public class UsageExampleTest {
 
 		// Load the image and invoke the detection
 		BufferedImage img = ImageUtils.load(new File(imagePath));
-		List<Detection> detections = InspirefaceLib.detect(img, false);
+		Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
+		CVUtils.bufferedImageToMat(img, imageMat);
+
+		// Invoke the detection
+		FaceDetections detections = InspirefaceLib.detect(imageMat, true);
 
 		// Print the detections
 		for (Detection detection : detections) {
-			// System.out.println(detection.label() + " = " + detection.conf() + " @ " + detection.box());
+			System.out.println(detection.box() + " @ " + detection.conf());
 		}
+		// Show the result and release the mat and the detection data
+		ImageUtils.show(imageMat);
+		MatProvider.released(imageMat);
+
 		// SNIPPET END image-usage.example
+		Thread.sleep(2000);
 	}
 
 	@Test
@@ -48,19 +62,29 @@ public class UsageExampleTest {
 
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
-		InspirefaceLib.init("InspireFace/test_res/pack/Pikachu", 640);
+		InspirefaceLib.init("packs/Pikachu", 640);
 		SimpleImageViewer viewer = new SimpleImageViewer();
 
 		// Open the video using Video4j
-		try (VideoFile video = VideoFile.open("src/test/resources/3769953-hd_1920_1080_25fps.mp4")) {
+		try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
 
 			// Process each frame
 			VideoFrame frame;
 			while ((frame = video.frame()) != null) {
-				System.out.println(frame);
-				CVUtils.resize(frame, 1024);
+				// System.out.println(frame);
+
+				// Optionally downscale the frame
+				CVUtils.resize(frame, 512);
+
 				// Run the detection on the mat reference
-				List<Detection> detections = InspirefaceLib.detect(frame.mat(), true);
+				FaceDetections detections = InspirefaceLib.detect(frame.mat(), true);
+
+				if (!detections.isEmpty()) {
+					// Extract the face embedding from the first face
+					float[] embedding = InspirefaceLib.embedding(frame.mat(), detections, 0);
+					// Extract the face attributes
+					List<FaceAttributes> attrs = InspirefaceLib.attributes(frame.mat(), detections, true);
+				}
 
 				// Print the detections
 				for (Detection detection : detections) {
@@ -79,14 +103,13 @@ public class UsageExampleTest {
 	public void testVideoPerformance() throws IOException {
 		long start = System.currentTimeMillis();
 		long nFrames = 0;
-		// SNIPPET START video-usage.example
 
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
-		InspirefaceLib.init("InspireFace/test_res/pack/Pikachu", 640);
+		InspirefaceLib.init("packs/Pikachu", 640);
 
 		// Open the video using Video4j
-		try (VideoFile video = VideoFile.open("src/test/resources/3769953-hd_1920_1080_25fps.mp4")) {
+		try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
 
 			// Process each frame
 			VideoFrame frame;
@@ -97,10 +120,9 @@ public class UsageExampleTest {
 
 			}
 		}
-		// SNIPPET END video-usage.example
 		long dur = System.currentTimeMillis() - start;
 		double avg = (double) dur / (double) nFrames;
-		System.out.println("Took: " + dur + " ms for " + nFrames + " frames. Avg: " + String.format("%.2f", avg));
+		System.out.println("Took: " + dur + " ms for " + nFrames + " frames. Avg: " + String.format("%.2f", avg) + "ms per frame");
 	}
 
 }
