@@ -27,6 +27,12 @@ CUDA support using TensorRT is currently not working.
 </dependency>
 ```
 
+## License
+
+The code of this project is "Apache License" but the license of the models may be different. Please 
+
+> The licensing of the open-source models employed by InspireFace adheres to the same requirements as InsightFace, specifying their use solely for academic purposes and explicitly prohibiting commercial applications.
+
 ## Models
 
 ```
