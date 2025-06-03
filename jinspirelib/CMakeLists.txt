@@ -41,15 +41,15 @@ target_link_libraries(jinspireface ${OpenCV_LIBS})
 target_link_libraries(jinspireface "${INSPIREFACE_LIB_DIR}/libInspireFace.so")
 
 
-#add_executable(BoxSample src/box_sample.cpp)
-##target_link_libraries(BoxSample InspireFace ${ext})
+add_executable(BoxSample src/box_sample.cpp)
+#target_link_libraries(BoxSample InspireFace ${ext})
 #target_link_libraries(BoxSample "${TENSOR_RT_DIR}/lib")
 #target_link_libraries(BoxSample "${TENSOR_RT_DIR}/targets/x86_64-linux-gnu/lib")
-#target_link_libraries(BoxSample "${INSPIREFACE_LIB_DIR}/libInspireFace.so")
-#target_link_libraries(BoxSample ${OpenCV_LIBS})
-#set_target_properties(BoxSample PROPERTIES
-#        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/sample/"
-#)
+target_link_libraries(BoxSample "${INSPIREFACE_LIB_DIR}/libInspireFace.so")
+target_link_libraries(BoxSample ${OpenCV_LIBS})
+set_target_properties(BoxSample PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/sample/"
+)
 
 
 if(APPLE)

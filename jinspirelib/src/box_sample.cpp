@@ -8,7 +8,7 @@
 static bool initialized = false;
 
 static std::unique_ptr<HFSession> globalSession;
-static std::string sourcePathStr = "test_res/data/RD/d3.jpeg";
+static std::string sourcePathStr = "test_res/pexels-olly-3812743_1k.jpg";
 
 inline HResult CVImageToImageStream(const inspirecv::Image &image, HFImageStream &handle, HFImageFormat format = HF_STREAM_BGR,
                                     HFRotation rot = HF_CAMERA_ROTATION_0)
@@ -35,7 +35,7 @@ inline HResult CVImageToImageStream(const inspirecv::Image &image, HFImageStream
 HFSession setupSession()
 {
     // Initialization at the beginning of the program
-    std::string resourcePath = "test_res/pack/Pikachu";
+    std::string resourcePath = "packs/Pikachu";
     HResult ret = HFReloadInspireFace(resourcePath.c_str());
     if (ret != HSUCCEED)
     {
@@ -43,10 +43,10 @@ HFSession setupSession()
         return NULL;
     }
 
-    HOption option = HF_ENABLE_FACE_RECOGNITION | HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT | HF_ENABLE_LIVENESS | HF_ENABLE_DETECT_MODE_LANDMARK | HF_ENABLE_FACE_ATTRIBUTE;
+    HOption option = HF_ENABLE_FACE_RECOGNITION | HF_ENABLE_QUALITY | HF_ENABLE_LIVENESS | HF_ENABLE_FACE_ATTRIBUTE;
     HFDetectMode detMode = HF_DETECT_MODE_ALWAYS_DETECT;
     // Maximum number of faces detected
-    HInt32 maxDetectNum = 20;
+    HInt32 maxDetectNum = 40;
     // Face detection image input level
     HInt32 detectPixelLevel = 640;
     // Handle of the current face SDK algorithm context
