@@ -281,6 +281,9 @@ int getFaceAttributes(HFMultipleFaceData multipleFaceData, HFImageStream imageSt
 {
     HFSession session = *globalSession.get();
 
+    HOption pipelineOption = HF_ENABLE_QUALITY | HF_ENABLE_FACE_ATTRIBUTE;
+
+    /* In this loop, all faces are processed */
     HResult ret = HFMultipleFacePipelineProcessOptional(session, imageStream, &multipleFaceData, HF_ENABLE_FACE_ATTRIBUTE);
     if (ret != HSUCCEED)
     {
@@ -327,6 +330,52 @@ HFImageStream loadImageStream(std::string sourcePathStr)
     return imageStream;
 }
 
+int getDenseLandmarkFromFace(HFMultipleFaceData multipleFaceData, cv::Mat image, int faceNr, bool drawPoints, HPoint2f *denseLandmarkPoints)
+{
+    HInt32 numOfLmk;
+
+    /* Get the number of dense landmark points */
+    HFGetNumOfFaceDenseLandmark(&numOfLmk);
+    denseLandmarkPoints = (HPoint2f *)malloc(sizeof(HPoint2f) * numOfLmk);
+    if (denseLandmarkPoints == NULL)
+    {
+        HFLogPrint(HF_LOG_ERROR, "Memory allocation failed!");
+        return -1;
+    }
+
+    HResult ret = HFGetFaceDenseLandmarkFromFaceToken(multipleFaceData.tokens[faceNr], denseLandmarkPoints, numOfLmk);
+    if (ret != HSUCCEED)
+    {
+        free(denseLandmarkPoints);
+        HFLogPrint(HF_LOG_ERROR, "HFGetFaceDenseLandmarkFromFaceToken error!");
+        return -1;
+    }
+
+    if (drawPoints)
+    {
+
+        /* Draw dense landmark points */
+        for (int i = 0; i < numOfLmk; i++)
+        {
+
+            // cv::Point point{denseLandmarkPoints[i].x, denseLandmarkPoints[i].y};
+            cv::Point point(denseLandmarkPoints[i].x, denseLandmarkPoints[i].y);
+            cv::circle(image, point, 2, cv::Scalar(255, 0, 255), 0, 8, 1);
+
+            // TODO change this to CV
+            /*
+            HFImageBitmapDrawCircleF(drawImage,
+                                     (HPoint2f){denseLandmarkPoints[i].x, denseLandmarkPoints[i].y},
+                                     0,
+                                     (HColor){100, 100, 0},
+                                     2);
+            */
+        }
+        free(denseLandmarkPoints);
+    }
+    return 0;
+}
+
 void detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
 {
     cv::Mat image = *imagePtr;
@@ -343,6 +392,11 @@ void detect(cv::Mat *imagePtr, bool drawBoundingBoxes)
         HFLogPrint(HF_LOG_INFO, "Detected: %d", faceNum);
         getFaceEmbedding(multipleFaceData, imageStream);
         getFaceAttributes(multipleFaceData, imageStream);
+        for (int i = 0; i < faceNum; i++)
+        {
+            HPoint2f *denseLandmarkPoints;
+            getDenseLandmarkFromFace(multipleFaceData, image, i, true, denseLandmarkPoints);
+        }
     }
     else
     {
