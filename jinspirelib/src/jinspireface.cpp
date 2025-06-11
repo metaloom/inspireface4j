@@ -27,7 +27,7 @@ inline HResult CVImageToImageStream(const inspirecv::Image &image, HFImageStream
     return ret;
 }
 
-HFSession setupSession(std::string resourcePath, HInt32 detectPixelLevel)
+HFSession setupSession(std::string resourcePath, HInt32 detectPixelLevel, HOption option)
 {
 
     // Initialization at the beginning of the program
@@ -42,7 +42,6 @@ HFSession setupSession(std::string resourcePath, HInt32 detectPixelLevel)
     }
 
     // HF_ENABLE_DETECT_MODE_LANDMARK
-    HOption option = HF_ENABLE_FACE_RECOGNITION | HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT | HF_ENABLE_LIVENESS | HF_ENABLE_FACE_ATTRIBUTE;
     HFDetectMode detMode = HF_DETECT_MODE_ALWAYS_DETECT;
     // Maximum number of faces detected
     HInt32 maxDetectNum = 20;
@@ -59,10 +58,11 @@ HFSession setupSession(std::string resourcePath, HInt32 detectPixelLevel)
     return session;
 }
 
-extern "C" HFSession *createSession(const char *packPath, HInt32 detectPixelLevel)
+extern "C" HFSession *createSession(const char *packPath, HInt32 detectPixelLevel, HOption option)
 {
     HFLogPrint(HF_LOG_ERROR, "Lib: Session create");
-    HFSession session = setupSession(packPath, detectPixelLevel);
+    //HOption option = HF_ENABLE_FACE_RECOGNITION | HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT | HF_ENABLE_LIVENESS | HF_ENABLE_FACE_ATTRIBUTE;
+    HFSession session = setupSession(packPath, detectPixelLevel, option);
     HFSession *sessionPtr = new HFSession(session);
     HFLogPrint(HF_LOG_ERROR, "Lib: Session created");
     return sessionPtr;

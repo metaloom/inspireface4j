@@ -130,7 +130,7 @@ public class InspirefaceLib {
 		}
 	}
 
-	public static InspirefaceSession session(String modelPath, int detectPixelLevel) {
+	public static InspirefaceSession session(String modelPath, int detectPixelLevel, SessionFeature... featureOptions) {
 		inspirefaceLibrary = loadLib();
 
 		Path mPath = Paths.get(modelPath);
@@ -141,12 +141,13 @@ public class InspirefaceLib {
 		MethodHandle createHandler = linker
 			.downcallHandle(
 				inspirefaceLibrary.findOrThrow("createSession"),
-				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
 
 		try (Arena arena = Arena.ofConfined()) {
 			// MemorySegment labelsPathMem = arena.allocateFrom(labelsPath);
 			MemorySegment modelPathMem = arena.allocateFrom(modelPath);
-			MemorySegment sessionPtr = (MemorySegment) createHandler.invoke(modelPathMem, detectPixelLevel);
+			int options = toHOption(featureOptions);
+			MemorySegment sessionPtr = (MemorySegment) createHandler.invoke(modelPathMem, detectPixelLevel, options);
 			initialized = true;
 			return new InspirefaceSession(sessionPtr);
 		} catch (Throwable t) {
@@ -307,5 +308,13 @@ public class InspirefaceLib {
 		} catch (Throwable t) {
 			throw new Inspireface4jException("Failed to release session", t);
 		}
+	}
+
+	private static int toHOption(SessionFeature[] featureOptions) {
+		int f = 0;
+		for (SessionFeature option : featureOptions) {
+			f |= option.getValue();
+		}
+		return f;
 	}
 }

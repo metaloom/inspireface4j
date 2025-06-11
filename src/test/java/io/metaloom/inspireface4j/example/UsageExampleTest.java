@@ -8,7 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.opencv.core.Mat;
 import org.opencv.imgproc.Imgproc;
-
+import static io.metaloom.inspireface4j.SessionFeature.*;
 import io.metaloom.inspireface4j.BoundingBox;
 import io.metaloom.inspireface4j.Detection;
 import io.metaloom.inspireface4j.FaceAttributes;
@@ -35,7 +35,7 @@ public class UsageExampleTest {
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
 
-		try (InspirefaceSession session = InspirefaceLib.session(DEFAULT_PACK, 640)) {
+		try (InspirefaceSession session = InspirefaceLib.session(DEFAULT_PACK, 640,  ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE)) {
 
 			// Load the image and invoke the detection
 			BufferedImage img = ImageUtils.load(new File(imagePath));
@@ -65,8 +65,8 @@ public class UsageExampleTest {
 		Video4j.init();
 		SimpleImageViewer viewer = new SimpleImageViewer();
 
-		// InspirefaceLib.init("packs/Pikachu", 640);
-		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640)) {
+		
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE)) {
 
 			// Open the video using Video4j
 			try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {

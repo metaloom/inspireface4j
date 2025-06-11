@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 
 import org.junit.jupiter.api.Test;
 import org.opencv.core.Mat;
@@ -28,22 +29,45 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 
 		System.out.println("Detect");
 		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640)) {
-
-			FaceDetections detections = session.detect(imageMat, true);
-			InspirefaceLib.logLevel(HFLogLevel.HF_LOG_DEBUG);
-			session.attributes(imageMat, detections, true);
-			session.embedding(imageMat, detections, 1);
-			assertNotNull(detections);
-			// assertEquals(3, detections.size());
-			ImageUtils.show(imageMat);
-
-			for (Detection detection : detections) {
-				System.out.println("conf: " + detection.conf());
-			}
-
+			detect(session, imageMat);
 		}
 		Thread.sleep(2000);
 		// System.in.read();
+	}
+
+	@Test
+	public void testMultiSessions() throws InterruptedException, IOException {
+		BufferedImage img = ImageUtils.load(new File(imagePath));
+		assertNotNull(img);
+
+		System.out.println("Detect");
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640)) {
+			Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
+			CVUtils.bufferedImageToMat(img, imageMat);
+			detect(session, imageMat);
+		}
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640)) {
+			Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
+			CVUtils.bufferedImageToMat(img, imageMat);
+			detect(session, imageMat);
+		}
+		Thread.sleep(2000);
+		// System.in.read();
+	}
+
+	private void detect(InspirefaceSession session, Mat imageMat) {
+		FaceDetections detections = session.detect(imageMat, true);
+		InspirefaceLib.logLevel(HFLogLevel.HF_LOG_DEBUG);
+		session.attributes(imageMat, detections, true);
+		session.embedding(imageMat, detections, 1);
+		assertNotNull(detections);
+		// assertEquals(3, detections.size());
+		ImageUtils.show(imageMat);
+
+		for (Detection detection : detections) {
+			System.out.println("conf: " + detection.conf());
+		}
+
 	}
 
 }
