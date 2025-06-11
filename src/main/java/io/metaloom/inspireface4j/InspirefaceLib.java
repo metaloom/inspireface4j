@@ -99,17 +99,27 @@ public class InspirefaceLib {
 	}
 
 	private static SymbolLookup loadLib() {
+
+		String inspirefaceLib = System.mapLibraryName("InspireFace");
+		String jinspirefaceLib = System.mapLibraryName("jinspireface");
+
+		extractAndLoad(inspirefaceLib);
+		extractAndLoad(jinspirefaceLib);
+		// inspirefaceLib = SymbolLookup.libraryLookup(libPath, arena);
+		return SymbolLookup.loaderLookup();
+	}
+
+	private static void extractAndLoad(String name) {
 		String os = System.getProperty("os.name", "generic")
 			.toLowerCase(Locale.ENGLISH);
-		String name = System.mapLibraryName("jinspireface");
-
 		String libpath = "";
 		if (os.contains("linux")) {
 			libpath = "/native" + File.separator + "linux" + File.separator + name;
 		} else if (os.contains("mac")) {
 			libpath = "/native" + File.separator + "macosx" + File.separator + name;
 		} else {
-			throw new java.lang.UnsupportedOperationException(os + " is not supported. Try to recompile Jdlib on your machine and then use it.");
+			throw new java.lang.UnsupportedOperationException(
+				os + " is not supported. Try to recompile jinspireface on your machine and then use it.");
 		}
 
 		try (InputStream inputStream = InspirefaceLib.class.getResourceAsStream(libpath)) {
@@ -122,17 +132,20 @@ public class InspirefaceLib {
 				}
 				System.load(fileOut.toString());
 			}
-			return SymbolLookup.loaderLookup();
-			// inspirefaceLib = SymbolLookup.libraryLookup(libPath, arena);
 		} catch (Exception e) {
-			logger.error("Failed to load inspireface4j lib", e);
-			throw new Inspireface4jException("Failed to load native library.", e);
+			logger.error("Failed to load native lib: " + name, e);
+			throw new Inspireface4jException("Failed to load native library: " + name, e);
 		}
+
 	}
 
 	public static InspirefaceSession session(String modelPath, int detectPixelLevel, SessionFeature... featureOptions) {
-		inspirefaceLibrary = loadLib();
+		if (inspirefaceLibrary == null) {
+			inspirefaceLibrary = loadLib();
+		}
 
+		// TODO make this configureable
+		int maxDetectNum = 20;
 		Path mPath = Paths.get(modelPath);
 		if (!Files.exists(mPath)) {
 			throw new Inspireface4jException("Unable to locate model with path " + mPath);
@@ -141,13 +154,13 @@ public class InspirefaceLib {
 		MethodHandle createHandler = linker
 			.downcallHandle(
 				inspirefaceLibrary.findOrThrow("createSession"),
-				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
+				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
 
 		try (Arena arena = Arena.ofConfined()) {
 			// MemorySegment labelsPathMem = arena.allocateFrom(labelsPath);
 			MemorySegment modelPathMem = arena.allocateFrom(modelPath);
 			int options = toHOption(featureOptions);
-			MemorySegment sessionPtr = (MemorySegment) createHandler.invoke(modelPathMem, detectPixelLevel, options);
+			MemorySegment sessionPtr = (MemorySegment) createHandler.invoke(modelPathMem, detectPixelLevel, options, maxDetectNum);
 			initialized = true;
 			return new InspirefaceSession(sessionPtr);
 		} catch (Throwable t) {

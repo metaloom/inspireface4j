@@ -1,5 +1,6 @@
 package io.metaloom.inspireface4j;
 
+import static io.metaloom.inspireface4j.SessionFeature.*;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,7 @@ public class InpirefaceLibVideoTest extends AbstractInspireFaceLibTest {
 	public void testVideo() throws Throwable {
 		SimpleImageViewer viewer = new SimpleImageViewer();
 
-		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640)) {
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_ATTRIBUTE, ENABLE_FACE_RECOGNITION)) {
 
 			// try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
 			try (VideoFile video = VideoFile.open("/extra/vid/4.mkv")) {

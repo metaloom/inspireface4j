@@ -16,6 +16,8 @@ import io.metaloom.video4j.impl.MatProvider;
 import io.metaloom.video4j.opencv.CVUtils;
 import io.metaloom.video4j.utils.ImageUtils;
 
+import static io.metaloom.inspireface4j.SessionFeature.*;
+
 public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 
 	private static String imagePath = TestMedia.IMG_FACE_RASTER_1K_UPPER;
@@ -28,7 +30,7 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 		CVUtils.bufferedImageToMat(img, imageMat);
 
 		System.out.println("Detect");
-		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640)) {
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_ATTRIBUTE, ENABLE_FACE_RECOGNITION)) {
 			detect(session, imageMat);
 		}
 		Thread.sleep(2000);
@@ -41,12 +43,12 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 		assertNotNull(img);
 
 		System.out.println("Detect");
-		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640)) {
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_ATTRIBUTE, ENABLE_FACE_RECOGNITION)) {
 			Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
 			CVUtils.bufferedImageToMat(img, imageMat);
 			detect(session, imageMat);
 		}
-		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640)) {
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_ATTRIBUTE, ENABLE_FACE_RECOGNITION)) {
 			Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
 			CVUtils.bufferedImageToMat(img, imageMat);
 			detect(session, imageMat);

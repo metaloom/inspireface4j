@@ -27,7 +27,7 @@ inline HResult CVImageToImageStream(const inspirecv::Image &image, HFImageStream
     return ret;
 }
 
-HFSession setupSession(std::string resourcePath, HInt32 detectPixelLevel, HOption option)
+HFSession setupSession(std::string resourcePath, HInt32 detectPixelLevel, HOption option, HInt32 maxDetectNum)
 {
 
     // Initialization at the beginning of the program
@@ -43,10 +43,7 @@ HFSession setupSession(std::string resourcePath, HInt32 detectPixelLevel, HOptio
 
     // HF_ENABLE_DETECT_MODE_LANDMARK
     HFDetectMode detMode = HF_DETECT_MODE_ALWAYS_DETECT;
-    // Maximum number of faces detected
-    HInt32 maxDetectNum = 20;
-    // Face detection image input level
-    // HInt32 detectPixelLevel = 640;
+
     // Handle of the current face SDK algorithm context
     HFSession session = {0};
     ret = HFCreateInspireFaceSessionOptional(option, detMode, maxDetectNum, detectPixelLevel, -1, &session);
@@ -58,11 +55,10 @@ HFSession setupSession(std::string resourcePath, HInt32 detectPixelLevel, HOptio
     return session;
 }
 
-extern "C" HFSession *createSession(const char *packPath, HInt32 detectPixelLevel, HOption option)
+extern "C" HFSession *createSession(const char *packPath, HInt32 detectPixelLevel, HOption option, HInt32 maxDetectNum)
 {
     HFLogPrint(HF_LOG_ERROR, "Lib: Session create");
-    //HOption option = HF_ENABLE_FACE_RECOGNITION | HF_ENABLE_QUALITY | HF_ENABLE_MASK_DETECT | HF_ENABLE_LIVENESS | HF_ENABLE_FACE_ATTRIBUTE;
-    HFSession session = setupSession(packPath, detectPixelLevel, option);
+    HFSession session = setupSession(packPath, detectPixelLevel, option, maxDetectNum);
     HFSession *sessionPtr = new HFSession(session);
     HFLogPrint(HF_LOG_ERROR, "Lib: Session created");
     return sessionPtr;
@@ -162,7 +158,10 @@ HFMultipleFaceData detectFaces(HFSession *sessionPtr, HFImageStream imageStream,
 extern "C" int releaseSession(HFSession *session)
 {
 
-    HFLogPrint(HF_LOG_ERROR, "Lib: Session releasing");
+    if (LOG == HF_LOG_DEBUG)
+    {
+        HFLogPrint(HF_LOG_DEBUG, "Lib: Session releasing");
+    }
     HResult ret = HFReleaseInspireFaceSession(*session);
     if (ret != HSUCCEED)
     {
