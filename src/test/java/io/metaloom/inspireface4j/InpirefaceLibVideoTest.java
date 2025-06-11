@@ -17,29 +17,32 @@ public class InpirefaceLibVideoTest extends AbstractInspireFaceLibTest {
 	public void testVideo() throws Throwable {
 		SimpleImageViewer viewer = new SimpleImageViewer();
 
-		// try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
-		try (VideoFile video = VideoFile.open("/extra/vid/4.mkv")) {
-			video.seekToFrameRatio(0.3);
-			long start = System.currentTimeMillis();
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640)) {
 
-			VideoFrame frame;
-			while ((frame = video.frame()) != null) {
-				Mat imageMat = frame.mat();
-				FaceDetections detections = InspirefaceLib.detect(imageMat, false);
-				if (!detections.isEmpty()) {
-					//InspirefaceLib.embedding(imageMat, detections, 0);
-					List<FaceAttributes> attrs = InspirefaceLib.attributes(imageMat, detections, true);
+			// try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
+			try (VideoFile video = VideoFile.open("/extra/vid/4.mkv")) {
+				video.seekToFrameRatio(0.3);
+				long start = System.currentTimeMillis();
+
+				VideoFrame frame;
+				while ((frame = video.frame()) != null) {
+					Mat imageMat = frame.mat();
+					FaceDetections detections = session.detect(imageMat, false);
+					if (!detections.isEmpty()) {
+						// InspirefaceLib.embedding(imageMat, detections, 0);
+						List<FaceAttributes> attrs = session.attributes(imageMat, detections, true);
+					}
+					// if (attrs.size() >= 1) {
+					// System.out.println(attrs.getFirst());
+					// }
+					drawDetections(detections, imageMat);
+
+					viewer.show(imageMat);
 				}
-				// if (attrs.size() >= 1) {
-				// System.out.println(attrs.getFirst());
-				// }
-				drawDetections(detections, imageMat);
-
-				viewer.show(imageMat);
+				long dur = System.currentTimeMillis() - start;
+				System.out.println("Took " + dur);
+				Thread.sleep(50);
 			}
-			long dur = System.currentTimeMillis() - start;
-			System.out.println("Took " + dur);
-			Thread.sleep(50);
 		}
 
 	}

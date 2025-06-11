@@ -125,8 +125,34 @@ public class InspirefaceLib {
 			return SymbolLookup.loaderLookup();
 			// inspirefaceLib = SymbolLookup.libraryLookup(libPath, arena);
 		} catch (Exception e) {
+			logger.error("Failed to load inspireface4j lib", e);
 			throw new Inspireface4jException("Failed to load native library.", e);
 		}
+	}
+
+	public static InspirefaceSession session(String modelPath, int detectPixelLevel) {
+		inspirefaceLibrary = loadLib();
+
+		Path mPath = Paths.get(modelPath);
+		if (!Files.exists(mPath)) {
+			throw new Inspireface4jException("Unable to locate model with path " + mPath);
+		}
+
+		MethodHandle createHandler = linker
+			.downcallHandle(
+				inspirefaceLibrary.findOrThrow("createSession"),
+				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+
+		try (Arena arena = Arena.ofConfined()) {
+			// MemorySegment labelsPathMem = arena.allocateFrom(labelsPath);
+			MemorySegment modelPathMem = arena.allocateFrom(modelPath);
+			MemorySegment sessionPtr = (MemorySegment) createHandler.invoke(modelPathMem, detectPixelLevel);
+			initialized = true;
+			return new InspirefaceSession(sessionPtr);
+		} catch (Throwable t) {
+			throw new Inspireface4jException("Failed to initialize InspirefaceLib", t);
+		}
+
 	}
 
 	/**
@@ -161,17 +187,17 @@ public class InspirefaceLib {
 		}
 	}
 
-	public static FaceDetections detect(Mat imageMat, boolean drawBoundingBoxes) {
+	public static FaceDetections detect(InspirefaceSession session, Mat imageMat, boolean drawBoundingBoxes) {
 		checkInitialized();
 
 		MethodHandle detectHandler = linker
 			.downcallHandle(
 				inspirefaceLibrary.findOrThrow("detect"),
-				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BOOLEAN));
+				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BOOLEAN));
 
 		try {
 			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
-			MemorySegment multipleFaceData = (MemorySegment) detectHandler.invoke(imageSeg, drawBoundingBoxes);
+			MemorySegment multipleFaceData = (MemorySegment) detectHandler.invoke(session.data(), imageSeg, drawBoundingBoxes);
 			multipleFaceData = multipleFaceData.reinterpret(HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteSize());
 			return mapFaceDetections(multipleFaceData);
 		} catch (Throwable t) {
@@ -180,25 +206,25 @@ public class InspirefaceLib {
 
 	}
 
-	public static FaceDetections detect(BufferedImage img) {
+	public static FaceDetections detect(InspirefaceSession session, BufferedImage img) {
 		Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
 		CVUtils.bufferedImageToMat(img, imageMat);
-		FaceDetections detections = detect(imageMat, false);
+		FaceDetections detections = detect(session, imageMat, false);
 		MatProvider.released(imageMat);
 		return detections;
 	}
 
-	public static List<FaceAttributes> attributes(Mat imageMat, FaceDetections detections, boolean drawAttributes) {
+	public static List<FaceAttributes> attributes(InspirefaceSession session, Mat imageMat, FaceDetections detections, boolean drawAttributes) {
 		checkInitialized();
 
 		MethodHandle attrHandler = linker
 			.downcallHandle(
 				inspirefaceLibrary.findOrThrow("faceAttributes"),
-				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
 		try {
 			MemorySegment imageAttr = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
-			MemorySegment attrData = (MemorySegment) attrHandler.invoke(detections.data().segment(), imageAttr);
+			MemorySegment attrData = (MemorySegment) attrHandler.invoke(session.data(), detections.data().segment(), imageAttr);
 
 			HFFaceAttributeResult attr = new HFFaceAttributeResult(attrData);
 			List<FaceAttributes> attributes = new ArrayList<>();
@@ -240,17 +266,17 @@ public class InspirefaceLib {
 		}
 	}
 
-	public static float[] embedding(Mat imageMat, FaceDetections detections, int faceNr) {
+	public static float[] embedding(InspirefaceSession session, Mat imageMat, FaceDetections detections, int faceNr) {
 		checkInitialized();
 
 		MethodHandle attrHandler = linker
 			.downcallHandle(
 				inspirefaceLibrary.findOrThrow("faceEmbeddings"),
-				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
+				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
 		try {
 			MemorySegment imageAttr = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
-			MemorySegment embeddingData = (MemorySegment) attrHandler.invoke(detections.data().segment(), imageAttr, faceNr);
+			MemorySegment embeddingData = (MemorySegment) attrHandler.invoke(session.data(), detections.data().segment(), imageAttr, faceNr);
 			HFFaceFeature attr = new HFFaceFeature(embeddingData);
 			return attr.data();
 		} catch (Throwable t) {
@@ -267,6 +293,19 @@ public class InspirefaceLib {
 			levelHandler.invoke(level.ordinal());
 		} catch (Throwable t) {
 			throw new Inspireface4jException("Failed to invoke embeddings", t);
+		}
+	}
+
+	public static void releaseSession(MemorySegment sessionPtr) throws Inspireface4jException {
+		MethodHandle releaseSessionHandler = linker
+			.downcallHandle(
+				inspirefaceLibrary.findOrThrow("releaseSession"),
+				FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+
+		try {
+			releaseSessionHandler.invoke(sessionPtr);
+		} catch (Throwable t) {
+			throw new Inspireface4jException("Failed to release session", t);
 		}
 	}
 }

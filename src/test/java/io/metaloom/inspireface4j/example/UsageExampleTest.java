@@ -13,6 +13,7 @@ import io.metaloom.inspireface4j.BoundingBox;
 import io.metaloom.inspireface4j.Detection;
 import io.metaloom.inspireface4j.FaceAttributes;
 import io.metaloom.inspireface4j.InspirefaceLib;
+import io.metaloom.inspireface4j.InspirefaceSession;
 import io.metaloom.inspireface4j.data.FaceDetections;
 import io.metaloom.video4j.Video4j;
 import io.metaloom.video4j.VideoFile;
@@ -34,24 +35,24 @@ public class UsageExampleTest {
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
 
-		InspirefaceLib.init(DEFAULT_PACK, 640);
+		try (InspirefaceSession session = InspirefaceLib.session(DEFAULT_PACK, 640)) {
 
-		// Load the image and invoke the detection
-		BufferedImage img = ImageUtils.load(new File(imagePath));
-		Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
-		CVUtils.bufferedImageToMat(img, imageMat);
+			// Load the image and invoke the detection
+			BufferedImage img = ImageUtils.load(new File(imagePath));
+			Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
+			CVUtils.bufferedImageToMat(img, imageMat);
 
-		// Invoke the detection
-		FaceDetections detections = InspirefaceLib.detect(imageMat, true);
+			// Invoke the detection
+			FaceDetections detections = session.detect(imageMat, true);
 
-		// Print the detections
-		for (Detection detection : detections) {
-			System.out.println(detection.box() + " @ " + detection.conf());
+			// Print the detections
+			for (Detection detection : detections) {
+				System.out.println(detection.box() + " @ " + detection.conf());
+			}
+			// Show the result and release the mat and the detection data
+			ImageUtils.show(imageMat);
+			MatProvider.released(imageMat);
 		}
-		// Show the result and release the mat and the detection data
-		ImageUtils.show(imageMat);
-		MatProvider.released(imageMat);
-
 		// SNIPPET END image-usage.example
 		Thread.sleep(2000);
 	}
@@ -62,40 +63,44 @@ public class UsageExampleTest {
 
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
-		InspirefaceLib.init("packs/Pikachu", 640);
 		SimpleImageViewer viewer = new SimpleImageViewer();
 
-		// Open the video using Video4j
-		try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
+		// InspirefaceLib.init("packs/Pikachu", 640);
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640)) {
 
-			// Process each frame
-			VideoFrame frame;
-			while ((frame = video.frame()) != null) {
-				// System.out.println(frame);
+			// Open the video using Video4j
+			try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
 
-				// Optionally downscale the frame
-				CVUtils.resize(frame, 512);
+				// Process each frame
+				VideoFrame frame;
+				while ((frame = video.frame()) != null) {
+					// System.out.println(frame);
 
-				// Run the detection on the mat reference
-				FaceDetections detections = InspirefaceLib.detect(frame.mat(), true);
+					// Optionally downscale the frame
+					CVUtils.resize(frame, 512);
 
-				if (!detections.isEmpty()) {
-					// Extract the face embedding from the first face
-					float[] embedding = InspirefaceLib.embedding(frame.mat(), detections, 0);
-					// Extract the face attributes
-					List<FaceAttributes> attrs = InspirefaceLib.attributes(frame.mat(), detections, true);
+					// Run the detection on the mat reference
+					FaceDetections detections = session.detect(frame.mat(), true);
+
+					if (!detections.isEmpty()) {
+						// Extract the face embedding from the first face
+						float[] embedding = session.embedding(frame.mat(), detections, 0);
+						// Extract the face attributes
+						List<FaceAttributes> attrs = session.attributes(frame.mat(), detections, true);
+					}
+
+					// Print the detections
+					for (Detection detection : detections) {
+						double confidence = detection.conf();
+						BoundingBox box = detection.box();
+						System.out.println("Frame[" + video.currentFrame() + "] = " + confidence + " @ " + box);
+					}
+
+					viewer.show(frame.mat());
 				}
-
-				// Print the detections
-				for (Detection detection : detections) {
-					double confidence = detection.conf();
-					BoundingBox box = detection.box();
-					System.out.println("Frame[" + video.currentFrame() + "] = " + confidence + " @ " + box);
-				}
-
-				viewer.show(frame.mat());
 			}
 		}
+
 		// SNIPPET END video-usage.example
 	}
 
@@ -115,7 +120,7 @@ public class UsageExampleTest {
 			VideoFrame frame;
 			while ((frame = video.frame()) != null) {
 				// Run the detection on the mat reference
-				InspirefaceLib.detect(frame.mat(), false);
+				InspirefaceLib.detect(null, frame.mat(), false);
 				nFrames++;
 
 			}

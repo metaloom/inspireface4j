@@ -27,18 +27,21 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 		CVUtils.bufferedImageToMat(img, imageMat);
 
 		System.out.println("Detect");
-		FaceDetections detections = InspirefaceLib.detect(imageMat, true);
-		InspirefaceLib.logLevel(HFLogLevel.HF_LOG_DEBUG);
-		InspirefaceLib.attributes(imageMat,  detections, true);
-		InspirefaceLib.embedding(imageMat, detections, 1);
-		assertNotNull(detections);
-		// assertEquals(3, detections.size());
-		ImageUtils.show(imageMat);
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640)) {
 
-		for (Detection detection : detections) {
-			System.out.println("conf: " + detection.conf());
+			FaceDetections detections = session.detect(imageMat, true);
+			InspirefaceLib.logLevel(HFLogLevel.HF_LOG_DEBUG);
+			session.attributes(imageMat, detections, true);
+			session.embedding(imageMat, detections, 1);
+			assertNotNull(detections);
+			// assertEquals(3, detections.size());
+			ImageUtils.show(imageMat);
+
+			for (Detection detection : detections) {
+				System.out.println("conf: " + detection.conf());
+			}
+
 		}
-
 		Thread.sleep(2000);
 		// System.in.read();
 	}
