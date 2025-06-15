@@ -15,4 +15,20 @@ public class BoundingBox {
 	public String toString() {
 		return "BoundingBox{x=" + x + ", y=" + y + ", width=" + width + ", height=" + height + "}";
 	}
+
+	public int getHeight() {
+		return height;
+	}
+
+	public int getWidth() {
+		return width;
+	}
+
+	public int getX() {
+		return x;
+	}
+
+	public int getY() {
+		return y;
+	}
 }

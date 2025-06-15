@@ -47,7 +47,7 @@ public class UsageExampleTest {
 
 			// Print the detections
 			for (Detection detection : detections) {
-				System.out.println(detection.box() + " @ " + detection.conf());
+				System.out.println(detection.box() + " @ " + String.format("%.4f", detection.conf()));
 			}
 			// Show the result and release the mat and the detection data
 			ImageUtils.show(imageMat);

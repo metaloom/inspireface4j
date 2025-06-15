@@ -73,7 +73,7 @@ public class InspirefaceLib {
 			HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("rects"))); // you need to calculate this
 
 		MemorySegment confPointer = multipleFaceData.get(ValueLayout.ADDRESS,
-			HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("rects"))); // you need to calculate this
+			HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("detConfidence"))); // you need to calculate this
 		// offset
 
 		MemorySegment confArray = MemorySegment.ofAddress(confPointer.address());
