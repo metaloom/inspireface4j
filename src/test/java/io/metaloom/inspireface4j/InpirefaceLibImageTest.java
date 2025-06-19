@@ -1,10 +1,14 @@
 package io.metaloom.inspireface4j;
 
+import static io.metaloom.inspireface4j.SessionFeature.ENABLE_FACE_ATTRIBUTE;
+import static io.metaloom.inspireface4j.SessionFeature.ENABLE_FACE_RECOGNITION;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.opencv.core.Mat;
@@ -15,8 +19,6 @@ import io.metaloom.inspireface4j.data.internal.HFLogLevel;
 import io.metaloom.video4j.impl.MatProvider;
 import io.metaloom.video4j.opencv.CVUtils;
 import io.metaloom.video4j.utils.ImageUtils;
-
-import static io.metaloom.inspireface4j.SessionFeature.*;
 
 public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 
@@ -33,7 +35,7 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_ATTRIBUTE, ENABLE_FACE_RECOGNITION)) {
 			detect(session, imageMat);
 		}
-		Thread.sleep(2000);
+		Thread.sleep(9000);
 		// System.in.read();
 	}
 
@@ -53,17 +55,21 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 			CVUtils.bufferedImageToMat(img, imageMat);
 			detect(session, imageMat);
 		}
-		Thread.sleep(2000);
+		Thread.sleep(8000);
 		// System.in.read();
 	}
 
 	private void detect(InspirefaceSession session, Mat imageMat) {
 		FaceDetections detections = session.detect(imageMat, true);
+		assertNotNull(detections);
+
 		InspirefaceLib.logLevel(HFLogLevel.HF_LOG_DEBUG);
 		session.attributes(imageMat, detections, true);
 		session.embedding(imageMat, detections, 1);
-		assertNotNull(detections);
-		// assertEquals(3, detections.size());
+		for (int i = 0; i < detections.size(); i++) {
+			List<FaceLandmark> landmarks = session.landmarks(imageMat, detections, i, true);
+			assertFalse(landmarks.isEmpty());
+		}
 		ImageUtils.show(imageMat);
 
 		for (Detection detection : detections) {

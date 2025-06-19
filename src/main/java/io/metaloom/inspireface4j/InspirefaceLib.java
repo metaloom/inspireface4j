@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import io.metaloom.inspireface4j.data.FaceDetections;
 import io.metaloom.inspireface4j.data.internal.HFFaceAttributeResult;
 import io.metaloom.inspireface4j.data.internal.HFFaceFeature;
+import io.metaloom.inspireface4j.data.internal.HFLandmarkData;
 import io.metaloom.inspireface4j.data.internal.HFLogLevel;
 import io.metaloom.inspireface4j.data.internal.HFMultipleFaceData;
 import io.metaloom.inspireface4j.data.internal.HFaceRect;
@@ -220,6 +221,46 @@ public class InspirefaceLib {
 
 	}
 
+	public static List<FaceLandmark> landmarks(InspirefaceSession session, Mat imageMat, FaceDetections detections, int faceNr,
+		boolean drawLandmarks) {
+		checkInitialized();
+
+		MethodHandle landmarksHandler = linker
+			.downcallHandle(
+				inspirefaceLibrary.findOrThrow("faceLandmarks"),
+				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT,
+					ValueLayout.JAVA_BOOLEAN));
+
+		try {
+			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
+			MemorySegment pointData = (MemorySegment) landmarksHandler.invoke(session.data(), detections.data().segment(), imageSeg, faceNr,
+				false);
+			List<FaceLandmark> landmarks = mapPointData(pointData);
+
+			if (drawLandmarks) {
+				int b = (int) (Math.random() * 255);
+				int g = (int) (Math.random() * 255);
+				int r = (int) (Math.random() * 255);
+				for (FaceLandmark landmark : landmarks) {
+					int x = (int) landmark.getX();
+					int y = (int) landmark.getY();
+					// Scalar color = new Scalar(255 - colorOffset, 255 - colorOffset, 255 - colorOffset, 0);
+					Scalar color = new Scalar(b, g, r, 0);
+					CVUtils.drawCircle(imageMat, x, y, 1, color);
+				}
+			}
+			return landmarks;
+		} catch (Throwable t) {
+			throw new Inspireface4jException("Failed to invoke detection", t);
+		}
+
+	}
+
+	private static List<FaceLandmark> mapPointData(MemorySegment pointData) {
+		HFLandmarkData data = new HFLandmarkData(pointData);
+		return data.points();
+	}
+
 	public static FaceDetections detect(InspirefaceSession session, BufferedImage img) {
 		Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
 		CVUtils.bufferedImageToMat(img, imageMat);
@@ -330,4 +371,5 @@ public class InspirefaceLib {
 		}
 		return f;
 	}
+
 }

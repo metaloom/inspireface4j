@@ -22,7 +22,7 @@ public class InpirefaceLibVideoTest extends AbstractInspireFaceLibTest {
 
 			// try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
 			try (VideoFile video = VideoFile.open("/extra/vid/4.mkv")) {
-				video.seekToFrameRatio(0.3);
+				video.seekToFrameRatio(0.7);
 				long start = System.currentTimeMillis();
 
 				VideoFrame frame;
@@ -32,6 +32,9 @@ public class InpirefaceLibVideoTest extends AbstractInspireFaceLibTest {
 					if (!detections.isEmpty()) {
 						// InspirefaceLib.embedding(imageMat, detections, 0);
 						List<FaceAttributes> attrs = session.attributes(imageMat, detections, true);
+						for(int i = 0; i< detections.size();i++) {
+						session.landmarks(imageMat, detections, 0, true);
+						}
 					}
 					// if (attrs.size() >= 1) {
 					// System.out.println(attrs.getFirst());

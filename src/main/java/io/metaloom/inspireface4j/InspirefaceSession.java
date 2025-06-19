@@ -64,4 +64,8 @@ public class InspirefaceSession implements AutoCloseable {
 		return sessionPtr;
 	}
 
+	public  List<FaceLandmark> landmarks(Mat mat, FaceDetections detections, int faceNr, boolean drawLandmarks) {
+		return InspirefaceLib.landmarks(this, mat, detections, faceNr, drawLandmarks);
+	}
+
 }

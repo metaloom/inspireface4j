@@ -237,6 +237,56 @@ HResult getFaceAttributes(HFSession *sessionPtr, HFFaceAttributeResult *faceAttr
     return 0;
 }
 
+int getDenseLandmarkFromFace(HFMultipleFaceData multipleFaceData, cv::Mat image, int faceNr, bool drawPoints, HFLandMarkData *landmarktDataPtr)
+{
+
+    /* Get the number of dense landmark points */
+    HFGetNumOfFaceDenseLandmark(&landmarktDataPtr->size);
+    HInt32 numOfLmk = landmarktDataPtr->size;
+    landmarktDataPtr->points = (HPoint2f *)malloc(sizeof(HPoint2f) * numOfLmk);
+    HPoint2f *denseLandmarkPoints = landmarktDataPtr->points;
+    if (denseLandmarkPoints == NULL)
+    {
+        HFLogPrint(HF_LOG_ERROR, "Lib: Memory allocation failed!");
+        return -1;
+    }
+
+    HResult ret = HFGetFaceDenseLandmarkFromFaceToken(multipleFaceData.tokens[faceNr], denseLandmarkPoints, numOfLmk);
+    if (ret != HSUCCEED)
+    {
+        free(denseLandmarkPoints);
+        HFLogPrint(HF_LOG_ERROR, "Lib: HFGetFaceDenseLandmarkFromFaceToken error!");
+        return -1;
+    }
+
+    /* Draw dense landmark points */
+    /*
+        if (drawPoints)
+        {
+            HFLogPrint(HF_LOG_INFO, "Lib: Landmark points %d", numOfLmk);
+            for (int i = 0; i < numOfLmk; i++)
+            {
+                // cv::Point point{denseLandmarkPoints[i].x, denseLandmarkPoints[i].y};
+                cv::Point point(denseLandmarkPoints[i].x, denseLandmarkPoints[i].y);
+                cv::circle(image, point, 2, cv::Scalar(255, 0, 255), 0, 8, 1);
+            }
+        }
+        */
+    return 0;
+}
+
+extern "C" HFLandMarkData *faceLandmarks(HFSession *sessionPtr, HFMultipleFaceData *multipleFaceDataPtr, cv::Mat *imagePtr, int faceNr, bool drawLandmarks)
+{
+    HFLandMarkData *landmarktDataPtr = new HFLandMarkData();
+    HResult ret = getDenseLandmarkFromFace(*multipleFaceDataPtr, *imagePtr, faceNr, drawLandmarks, landmarktDataPtr);
+    if (ret != HSUCCEED)
+    {
+        HFLogPrint(HF_LOG_ERROR, "Lib: Landmark extraction error!");
+        return nullptr;
+    }
+    return landmarktDataPtr;
+}
+
 extern "C" HFFaceFeature *faceEmbeddings(HFSession *sessionPtr, HFMultipleFaceData *multipleFaceDataPtr, cv::Mat *imagePtr, int faceNr)
 {
     if (LOG == HF_LOG_DEBUG)
