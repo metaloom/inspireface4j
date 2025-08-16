@@ -25,7 +25,7 @@ public enum SessionFeature {
 	///< Flag to enable interaction feature.
 	ENABLE_INTERACTION(0x00000100),
 
-	///< Flag to enable face pose estimation feature.
+	///< Flag to enable face pose estimation feature. This is needed for angular detection.
 	ENABLE_FACE_POSE(0x00000200);
 
 	int value;

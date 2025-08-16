@@ -12,6 +12,7 @@ import static io.metaloom.inspireface4j.SessionFeature.*;
 import io.metaloom.inspireface4j.BoundingBox;
 import io.metaloom.inspireface4j.Detection;
 import io.metaloom.inspireface4j.FaceAttributes;
+import io.metaloom.inspireface4j.FaceLandmark;
 import io.metaloom.inspireface4j.InspirefaceLib;
 import io.metaloom.inspireface4j.InspirefaceSession;
 import io.metaloom.inspireface4j.data.FaceDetections;
@@ -35,7 +36,7 @@ public class UsageExampleTest {
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
 
-		try (InspirefaceSession session = InspirefaceLib.session(DEFAULT_PACK, 640,  ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE)) {
+		try (InspirefaceSession session = InspirefaceLib.session(DEFAULT_PACK, 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE)) {
 
 			// Load the image and invoke the detection
 			BufferedImage img = ImageUtils.load(new File(imagePath));
@@ -65,8 +66,7 @@ public class UsageExampleTest {
 		Video4j.init();
 		SimpleImageViewer viewer = new SimpleImageViewer();
 
-		
-		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE)) {
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE, ENABLE_FACE_POSE)) {
 
 			// Open the video using Video4j
 			try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
@@ -87,6 +87,11 @@ public class UsageExampleTest {
 						float[] embedding = session.embedding(frame.mat(), detections, 0);
 						// Extract the face attributes
 						List<FaceAttributes> attrs = session.attributes(frame.mat(), detections, true);
+
+						// Run landmark detection for each detected face
+						for (int i = 0; i < detections.size(); i++) {
+							List<FaceLandmark> landmarks = session.landmarks(frame.mat(), detections, i, true);
+						}
 					}
 
 					// Print the detections
@@ -111,18 +116,18 @@ public class UsageExampleTest {
 
 		// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 		Video4j.init();
-		InspirefaceLib.init("packs/Pikachu", 640);
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE)) {
 
-		// Open the video using Video4j
-		try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
+			// Open the video using Video4j
+			try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
 
-			// Process each frame
-			VideoFrame frame;
-			while ((frame = video.frame()) != null) {
-				// Run the detection on the mat reference
-				InspirefaceLib.detect(null, frame.mat(), false);
-				nFrames++;
-
+				// Process each frame
+				VideoFrame frame;
+				while ((frame = video.frame()) != null) {
+					// Run the detection on the mat reference
+					session.detect(frame.mat(), false);
+					nFrames++;
+				}
 			}
 		}
 		long dur = System.currentTimeMillis() - start;

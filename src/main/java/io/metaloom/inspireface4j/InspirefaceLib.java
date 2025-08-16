@@ -226,38 +226,6 @@ public class InspirefaceLib {
 
 	}
 
-	/**
-	 * 
-	 * @param modelPath
-	 * @param detectPixelLevel
-	 *            Usually 160, 192, 256, 320, 640
-	 */
-	public static void init(String modelPath, int detectPixelLevel) {
-		if (initialized) {
-			throw new Inspireface4jException("InspirefaceLib already initialized");
-		}
-		inspirefaceLibrary = loadLib();
-
-		Path mPath = Paths.get(modelPath);
-		if (!Files.exists(mPath)) {
-			throw new Inspireface4jException("Unable to locate model with path " + mPath);
-		}
-
-		MethodHandle initHandler = linker
-			.downcallHandle(
-				inspirefaceLibrary.findOrThrow("initializeSession"),
-				FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
-
-		try (Arena arena = Arena.ofConfined()) {
-			// MemorySegment labelsPathMem = arena.allocateFrom(labelsPath);
-			MemorySegment modelPathMem = arena.allocateFrom(modelPath);
-			initHandler.invoke(modelPathMem, detectPixelLevel);
-			initialized = true;
-		} catch (Throwable t) {
-			throw new Inspireface4jException("Failed to initialize InspirefaceLib", t);
-		}
-	}
-
 	public static FaceDetections detect(InspirefaceSession session, Mat imageMat, boolean drawBoundingBoxes) {
 		checkInitialized();
 
@@ -268,9 +236,33 @@ public class InspirefaceLib {
 
 		try {
 			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
-			MemorySegment multipleFaceData = (MemorySegment) detectHandler.invoke(session.data(), imageSeg, drawBoundingBoxes);
+			MemorySegment multipleFaceData = (MemorySegment) detectHandler.invoke(session.data(), imageSeg, false);
 			multipleFaceData = multipleFaceData.reinterpret(HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteSize());
-			return mapFaceDetections(multipleFaceData);
+			FaceDetections detections = mapFaceDetections(multipleFaceData);
+			if (drawBoundingBoxes) {
+				for (Detection detection : detections) {
+					BoundingBox box = detection.box();
+					FaceAngles angles = detection.angles();
+
+					float delta = angles.delta(30.0f);
+					int r = (int) (255 * delta);
+					int g = (int) (255 * (1-delta));
+					int b = (int) (0);
+					System.out.println("" + r + " " + g + " " + b);
+					// int g = (int) (255);
+					// int b = (int) (0);
+					// int r = (int) (0);
+					// System.out.println(angles);
+					// if (angles.exceeds(30.0f)) {
+					// r = (int) (255);
+					// g = (int) (0);
+					// }
+
+					Scalar color = new Scalar(b, g, r, 0);
+					CVUtils.drawRect(imageMat, box.x, box.y, box.width, box.height, color);
+				}
+			}
+			return detections;
 		} catch (Throwable t) {
 			throw new Inspireface4jException("Failed to invoke detection", t);
 		}

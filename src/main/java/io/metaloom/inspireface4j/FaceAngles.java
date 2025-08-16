@@ -24,4 +24,55 @@ public class FaceAngles {
 		return pitch;
 	}
 
+	/**
+	 * Check whether any of the angles (roll, yaw, pitch) exceeds the given angle.
+	 * 
+	 * @param limit
+	 * @return
+	 */
+	public boolean exceeds(float limit) {
+		if (Math.abs(roll) >= limit) {
+			return true;
+		}
+		if (Math.abs(yaw) >= limit) {
+			return true;
+		}
+		if (Math.abs(pitch) >= limit) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Compute the delta factor of roll, yaw and pitch to the given limit.
+	 * 
+	 * @param limit
+	 * @return
+	 */
+	public float delta(float limit) {
+		float delta = 0;
+		float d = Math.abs(roll) / limit;
+		if (d > delta) {
+			delta = d;
+		}
+		d = Math.abs(yaw) / limit;
+		if (d > delta) {
+			delta = d;
+		}
+		d = Math.abs(pitch) / limit;
+		if (d > delta) {
+			delta = d;
+		}
+
+		if (delta >= 1) {
+			delta = 1;
+		}
+
+		return delta;
+	}
+
+	@Override
+	public String toString() {
+		return "[roll: %.2f, pitch: %.2f, yaw: %.2f]".formatted(roll, pitch, yaw);
+	}
 }
