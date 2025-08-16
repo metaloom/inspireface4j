@@ -7,6 +7,9 @@ Supported features:
 * Face detection (Boundingbox + Confidence)
 * Face attribute extraction
 * Face embedding extraction
+* Face landmark extraction
+* Face orientation angles (yaw, pitch, roll)
+
 
 Video processing can be by using the libary in combination with [Video4j](https://github.com/metaloom/video4j).
 
@@ -82,16 +85,16 @@ Video Example
 Video4j.init();
 SimpleImageViewer viewer = new SimpleImageViewer();
 
-try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE, ENABLE_FACE_POSE)) {
+try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE,
+	ENABLE_FACE_POSE)) {
 
-	boolean run = false;
 	// Open the video using Video4j
 	try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
 		// Process each frame
 		VideoFrame frame;
 		while ((frame = video.frame()) != null) {
 			// System.out.println(frame);
-		
+
 			// Optionally downscale the frame
 			CVUtils.resize(frame, 512);
 
@@ -118,11 +121,6 @@ try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, E
 			}
 
 			viewer.show(frame.mat());
-			if(!run ) {
-				System.in.read();
-				run = true;
-				} 
-
 		}
 	}
 }

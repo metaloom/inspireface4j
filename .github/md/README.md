@@ -7,6 +7,9 @@ Supported features:
 * Face detection (Boundingbox + Confidence)
 * Face attribute extraction
 * Face embedding extraction
+* Face landmark extraction
+* Face orientation angles (yaw, pitch, roll)
+
 
 Video processing can be by using the libary in combination with [Video4j](https://github.com/metaloom/video4j).
 
