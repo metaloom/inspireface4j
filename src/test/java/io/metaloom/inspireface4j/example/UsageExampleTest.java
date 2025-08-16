@@ -66,11 +66,11 @@ public class UsageExampleTest {
 		Video4j.init();
 		SimpleImageViewer viewer = new SimpleImageViewer();
 
-		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE, ENABLE_FACE_POSE)) {
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE,
+			ENABLE_FACE_POSE)) {
 
 			// Open the video using Video4j
 			try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
-
 				// Process each frame
 				VideoFrame frame;
 				while ((frame = video.frame()) != null) {

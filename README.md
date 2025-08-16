@@ -7,7 +7,6 @@ Supported features:
 * Face detection (Boundingbox + Confidence)
 * Face attribute extraction
 * Face embedding extraction
-* Face landmark extraction
 
 Video processing can be by using the libary in combination with [Video4j](https://github.com/metaloom/video4j).
 
@@ -55,7 +54,7 @@ String imagePath = "src/test/resources/pexels-olly-3812743_1k_lower.jpg";
 // Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
 Video4j.init();
 
-try (InspirefaceSession session = InspirefaceLib.session(DEFAULT_PACK, 640,  ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE)) {
+try (InspirefaceSession session = InspirefaceLib.session(DEFAULT_PACK, 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE)) {
 
 	// Load the image and invoke the detection
 	BufferedImage img = ImageUtils.load(new File(imagePath));
@@ -67,7 +66,7 @@ try (InspirefaceSession session = InspirefaceLib.session(DEFAULT_PACK, 640,  ENA
 
 	// Print the detections
 	for (Detection detection : detections) {
-		System.out.println(detection.box() + " @ " + detection.conf());
+		System.out.println(detection.box() + " @ " + String.format("%.4f", detection.conf()));
 	}
 	// Show the result and release the mat and the detection data
 	ImageUtils.show(imageMat);
@@ -83,17 +82,16 @@ Video Example
 Video4j.init();
 SimpleImageViewer viewer = new SimpleImageViewer();
 
+try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE, ENABLE_FACE_POSE)) {
 
-try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE)) {
-
+	boolean run = false;
 	// Open the video using Video4j
 	try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
-
 		// Process each frame
 		VideoFrame frame;
 		while ((frame = video.frame()) != null) {
 			// System.out.println(frame);
-
+		
 			// Optionally downscale the frame
 			CVUtils.resize(frame, 512);
 
@@ -105,6 +103,11 @@ try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, E
 				float[] embedding = session.embedding(frame.mat(), detections, 0);
 				// Extract the face attributes
 				List<FaceAttributes> attrs = session.attributes(frame.mat(), detections, true);
+
+				// Run landmark detection for each detected face
+				for (int i = 0; i < detections.size(); i++) {
+					List<FaceLandmark> landmarks = session.landmarks(frame.mat(), detections, i, true);
+				}
 			}
 
 			// Print the detections
@@ -115,6 +118,11 @@ try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, E
 			}
 
 			viewer.show(frame.mat());
+			if(!run ) {
+				System.in.read();
+				run = true;
+				} 
+
 		}
 	}
 }
