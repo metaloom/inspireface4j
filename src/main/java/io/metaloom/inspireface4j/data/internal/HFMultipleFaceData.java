@@ -23,6 +23,8 @@ public class HFMultipleFaceData {
 
 	public static final VarHandle RECTS_HANDLER = DETECTION_ARRAY_LAYOUT.varHandle(MemoryLayout.PathElement.groupElement("rects"));
 
+	//public static final VarHandle ANGELS_HANDLER = DETECTION_ARRAY_LAYOUT.arrayElementVarHandle(MemoryLayout.PathElement.groupElement("angles"));
+
 	private MemorySegment segment;
 
 	public HFMultipleFaceData(MemorySegment segment) {

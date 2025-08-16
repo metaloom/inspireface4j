@@ -42,7 +42,7 @@ public class HFLandmarkData {
 		MemorySegment pointsPtr = (MemorySegment) POINTS_HANDLE.get(segment, 0);
 		pointsPtr = pointsPtr.reinterpret(size * 2 * JAVA_FLOAT.byteSize());
 
-		for (int i = 0; i < size; i++) {
+		for (int i = 0; i < size; i+=2) {
 			float pointValueX = pointsPtr.get(JAVA_FLOAT, (long) i * JAVA_FLOAT.byteSize());
 			float pointValueY = pointsPtr.get(JAVA_FLOAT, (long) (i + 1) * JAVA_FLOAT.byteSize());
 			landmarks.add(new FaceLandmark(pointValueX, pointValueY));

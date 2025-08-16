@@ -22,11 +22,13 @@ import io.metaloom.video4j.utils.ImageUtils;
 
 public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 
-	private static String imagePath = TestMedia.IMG_FACE_RASTER_1K_UPPER;
+	private static final String RASTER_IMAGE_1K = TestMedia.IMG_FACE_RASTER_1K_UPPER;
+	
+	private static final String SOLO_IMAGE_1K = TestMedia.IMG_CHILD;
 
 	@Test
 	public void testImage() throws Throwable {
-		BufferedImage img = ImageUtils.load(new File(imagePath));
+		BufferedImage img = ImageUtils.load(new File(RASTER_IMAGE_1K));
 		assertNotNull(img);
 		Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
 		CVUtils.bufferedImageToMat(img, imageMat);
@@ -41,7 +43,7 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 
 	@Test
 	public void testMultiSessions() throws InterruptedException, IOException {
-		BufferedImage img = ImageUtils.load(new File(imagePath));
+		BufferedImage img = ImageUtils.load(new File(RASTER_IMAGE_1K));
 		assertNotNull(img);
 
 		System.out.println("Detect");
@@ -59,6 +61,32 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 		// System.in.read();
 	}
 
+	@Test
+	public void testLandmarks() throws Throwable {
+		BufferedImage img = ImageUtils.load(new File(SOLO_IMAGE_1K));
+		img = ImageUtils.scale(img, 640, 640);
+		assertNotNull(img);
+		Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
+		CVUtils.bufferedImageToMat(img, imageMat);
+
+		System.out.println("Detect");
+		try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_ATTRIBUTE, ENABLE_FACE_RECOGNITION)) {
+			InspirefaceLib.logLevel(HFLogLevel.HF_LOG_INFO);
+			FaceDetections detections = session.detect(imageMat, true);
+			assertNotNull(detections);
+
+			//session.attributes(imageMat, detections, true);
+			//session.embedding(imageMat, detections, 1);
+			for (int i = 0; i < detections.size(); i++) {
+				List<FaceLandmark> landmarks = session.landmarks(imageMat, detections, i, true);
+				assertFalse(landmarks.isEmpty());
+			}
+			ImageUtils.show(imageMat);
+		}
+		Thread.sleep(5000);
+		// System.in.read();
+	}
+	
 	private void detect(InspirefaceSession session, Mat imageMat) {
 		FaceDetections detections = session.detect(imageMat, true);
 		assertNotNull(detections);

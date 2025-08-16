@@ -138,7 +138,7 @@ HFMultipleFaceData detectFaces(HFSession *sessionPtr, HFImageStream imageStream,
             HFLogPrint(HF_LOG_DEBUG, "Lib: Face: %d - [x%d:y%d:w%d:h%d]", index, faceRect.x, faceRect.y, faceRect.width, faceRect.height);
             HFLogPrint(HF_LOG_DEBUG, "Lib: FaceID: %d - Conf: %.2f", multipleFaceData.trackIds[index], multipleFaceData.detConfidence[index]);
 
-            //  Print FaceID, In IMAGE-MODE it is changing, in VIDEO-MODE it is fixed, but it may be lost
+            // Print FaceID, In IMAGE-MODE it is changing, in VIDEO-MODE it is fixed, but it may be lost
             // Print Head euler angle, It can often be used to judge the quality of a face by the Angle
             // of the head
             // HFLogPrint(HF_LOG_INFO, "Roll: %f, Yaw: %f, Pitch: %f", multipleFaceData.angles.roll[index], multipleFaceData.angles.yaw[index],       multipleFaceData.angles.pitch[index]);
@@ -261,17 +261,18 @@ int getDenseLandmarkFromFace(HFMultipleFaceData multipleFaceData, cv::Mat image,
 
     /* Draw dense landmark points */
     /*
-        if (drawPoints)
+    if (drawPoints)
+    {
+        HFLogPrint(HF_LOG_INFO, "Lib: Landmark points %d", numOfLmk);
+        for (int i = 0; i < numOfLmk; i++)
         {
-            HFLogPrint(HF_LOG_INFO, "Lib: Landmark points %d", numOfLmk);
-            for (int i = 0; i < numOfLmk; i++)
-            {
-                // cv::Point point{denseLandmarkPoints[i].x, denseLandmarkPoints[i].y};
-                cv::Point point(denseLandmarkPoints[i].x, denseLandmarkPoints[i].y);
-                cv::circle(image, point, 2, cv::Scalar(255, 0, 255), 0, 8, 1);
-            }
+            HFLogPrint(HF_LOG_INFO, "Lib: Landmark X %.2f - %.2f", denseLandmarkPoints[i].x, denseLandmarkPoints[i].y);
+            //cv::Point point{denseLandmarkPoints[i].x, denseLandmarkPoints[i].y};
+            cv::Point point(denseLandmarkPoints[i].x, denseLandmarkPoints[i].y);
+            cv::circle(image, point, 2, cv::Scalar(255, 0, 255), 0, 8, 1);
         }
-        */
+    }
+    */
     return 0;
 }
 

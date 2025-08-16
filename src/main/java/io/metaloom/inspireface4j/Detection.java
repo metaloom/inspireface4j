@@ -5,10 +5,12 @@ public class Detection {
 	private BoundingBox box;
 	private float conf;
 	private FaceAttributes attributes;
+	private FaceAngles angles;
 
-	public Detection(BoundingBox box, float conf) {
+	public Detection(BoundingBox box, float conf, FaceAngles angles) {
 		this.box = box;
 		this.conf = conf;
+		this.angles = angles;
 	}
 
 	public BoundingBox box() {
@@ -19,8 +21,12 @@ public class Detection {
 		return conf;
 	}
 
-	public FaceAttributes getAttributes() {
+	public FaceAttributes attributes() {
 		return attributes;
+	}
+
+	public FaceAngles angles() {
+		return angles;
 	}
 
 	public void setAttributes(FaceAttributes attributes) {

@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import io.metaloom.inspireface4j.data.FaceDetections;
 import io.metaloom.inspireface4j.data.internal.HFFaceAttributeResult;
+import io.metaloom.inspireface4j.data.internal.HFFaceEulerAngle;
 import io.metaloom.inspireface4j.data.internal.HFFaceFeature;
 import io.metaloom.inspireface4j.data.internal.HFLandmarkData;
 import io.metaloom.inspireface4j.data.internal.HFLogLevel;
@@ -71,28 +72,83 @@ public class InspirefaceLib {
 		int detectedNum = multipleFaceData.get(ValueLayout.JAVA_INT, 0);
 
 		MemorySegment rectsPointer = multipleFaceData.get(ValueLayout.ADDRESS,
-			HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("rects"))); // you need to calculate this
+			HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("rects")));
 
 		MemorySegment confPointer = multipleFaceData.get(ValueLayout.ADDRESS,
-			HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("detConfidence"))); // you need to calculate this
-		// offset
+			HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("detConfidence")));
 
 		MemorySegment confArray = MemorySegment.ofAddress(confPointer.address());
 		confArray = confArray.reinterpret(ValueLayout.JAVA_FLOAT.byteSize() * detectedNum);
 
 		MemorySegment rectsArray = MemorySegment.ofAddress(rectsPointer.address());
 		rectsArray = rectsArray.reinterpret(detectedNum * HFaceRect.FACE_RECT_LAYOUT.byteSize());
+
+		// Angular Data
+
+		long offsetAngles = 32; // After detConfidence
+		MemorySegment anglesStruct = multipleFaceData.asSlice(offsetAngles);
+		anglesStruct = anglesStruct.reinterpret(3 * ValueLayout.ADDRESS.byteSize());
+
+		// Step 3: Extract pointers to float arrays
+		// MemorySegment rollPtr = anglesStruct.get(ValueLayout.ADDRESS, 0);
+
+		MemorySegment rollPointer = anglesStruct.get(ValueLayout.ADDRESS,
+			HFFaceEulerAngle.HFFACE_EULER_ANGLE_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("roll")));
+		MemorySegment yawPointer = anglesStruct.get(ValueLayout.ADDRESS,
+			HFFaceEulerAngle.HFFACE_EULER_ANGLE_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("yaw")));
+		MemorySegment pitchPointer = anglesStruct.get(ValueLayout.ADDRESS,
+			HFFaceEulerAngle.HFFACE_EULER_ANGLE_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("pitch")));
+
+		// Step 4: Interpret pointers as segments of floats
+		// Assuming face count equals number of floats in each array
+		MemorySegment rollArray = MemorySegment.ofAddress(rollPointer.address());
+		rollArray = rollArray.reinterpret(ValueLayout.JAVA_FLOAT.byteSize() * detectedNum);
+
+		MemorySegment yawArray = MemorySegment.ofAddress(yawPointer.address());
+		yawArray = yawArray.reinterpret(ValueLayout.JAVA_FLOAT.byteSize() * detectedNum);
+
+		MemorySegment pitchArray = MemorySegment.ofAddress(pitchPointer.address());
+		pitchArray = pitchArray.reinterpret(ValueLayout.JAVA_FLOAT.byteSize() * detectedNum);
+
+		//
+		// MemorySegment angelData = multipleFaceData.get(ValueLayout.ADDRESS,
+		// HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("angels")));
+		//
+		// MemorySegment yawArray = MemorySegment.ofAddress(angelData.address());
+		// yawArray = yawArray.reinterpret(ValueLayout.JAVA_FLOAT.byteSize() * detectedNum);
+		//
+		// MemorySegment rollArray = MemorySegment.ofAddress(angelData.address());
+		// rollArray = rollArray.reinterpret(ValueLayout.JAVA_FLOAT.byteSize() * detectedNum);
+		//
+		// MemorySegment pitchArray = MemorySegment.ofAddress(angelData.address());
+		// pitchArray = pitchArray.reinterpret(ValueLayout.JAVA_FLOAT.byteSize() * detectedNum);
+
 		for (int i = 0; i < detectedNum; i++) {
 
 			MemorySegment rect = rectsArray.asSlice(i * HFaceRect.FACE_RECT_LAYOUT.byteSize(), HFaceRect.FACE_RECT_LAYOUT.byteSize());
 
+			// TODO fix conf
 			float conf = confArray.get(ValueLayout.JAVA_FLOAT, 0);
 			int x = (int) HFaceRect.X_HANDLE.get(rect, 0);
 			int y = (int) HFaceRect.Y_HANDLE.get(rect, 0);
 			int width = (int) HFaceRect.WIDTH_HANDLE.get(rect, 0);
 			int height = (int) HFaceRect.HEIGHT_HANDLE.get(rect, 0);
 
-			detections.add(new Detection(new BoundingBox(x, y, width, height), conf));
+			// MemorySegment rollFloat = rollArray.asSlice(i * ValueLayout.JAVA_FLOAT.byteSize(), ValueLayout.JAVA_FLOAT.byteSize());
+			// float roll = (float) HFFaceEulerAngle.ROLL_HANDLE.get(rollFloat, 0);
+			//
+			// MemorySegment yawFloat = yawArray.asSlice(i * ValueLayout.JAVA_FLOAT.byteSize(), ValueLayout.JAVA_FLOAT.byteSize());
+			// float yaw = (float) HFFaceEulerAngle.YAW_HANDLE.get(yawFloat, 0);
+			//
+			// MemorySegment pitchFloat = pitchArray.asSlice(i * ValueLayout.JAVA_FLOAT.byteSize(), ValueLayout.JAVA_FLOAT.byteSize());
+			// float pitch = (float) HFFaceEulerAngle.PITCH_HANDLE.get(pitchFloat, 0);
+			//
+
+			float roll = rollArray.getAtIndex(ValueLayout.JAVA_FLOAT, i);
+			float yaw = yawArray.getAtIndex(ValueLayout.JAVA_FLOAT, i);
+			float pitch = pitchArray.getAtIndex(ValueLayout.JAVA_FLOAT, i);
+
+			detections.add(new Detection(new BoundingBox(x, y, width, height), conf, new FaceAngles(roll, yaw, pitch)));
 			// System.out.printf("Face[%d] - x: %d, y: %d, width: %d, height: %d - Conf: %.2f %n", i, x, y, width, height, conf);
 		}
 
