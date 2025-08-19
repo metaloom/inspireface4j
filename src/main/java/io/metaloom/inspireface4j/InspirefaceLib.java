@@ -248,15 +248,6 @@ public class InspirefaceLib {
 					int r = (int) (255 * delta);
 					int g = (int) (255 * (1-delta));
 					int b = (int) (0);
-					System.out.println("" + r + " " + g + " " + b);
-					// int g = (int) (255);
-					// int b = (int) (0);
-					// int r = (int) (0);
-					// System.out.println(angles);
-					// if (angles.exceeds(30.0f)) {
-					// r = (int) (255);
-					// g = (int) (0);
-					// }
 
 					Scalar color = new Scalar(b, g, r, 0);
 					CVUtils.drawRect(imageMat, box.x, box.y, box.width, box.height, color);

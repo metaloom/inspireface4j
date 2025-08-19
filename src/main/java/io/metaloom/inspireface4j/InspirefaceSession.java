@@ -56,6 +56,14 @@ public class InspirefaceSession implements AutoCloseable {
 		return InspirefaceLib.embedding(this, mat, detections, faceNr);
 	}
 
+	/**
+	 * Extract the attributes for all face detections.
+	 * 
+	 * @param mat
+	 * @param detections
+	 * @param drawAttributes
+	 * @return
+	 */
 	public List<FaceAttributes> attributes(Mat mat, FaceDetections detections, boolean drawAttributes) {
 		return InspirefaceLib.attributes(this, mat, detections, drawAttributes);
 	}
@@ -64,7 +72,7 @@ public class InspirefaceSession implements AutoCloseable {
 		return sessionPtr;
 	}
 
-	public  List<FaceLandmark> landmarks(Mat mat, FaceDetections detections, int faceNr, boolean drawLandmarks) {
+	public List<FaceLandmark> landmarks(Mat mat, FaceDetections detections, int faceNr, boolean drawLandmarks) {
 		return InspirefaceLib.landmarks(this, mat, detections, faceNr, drawLandmarks);
 	}
 
