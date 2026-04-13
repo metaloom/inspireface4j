@@ -30,7 +30,6 @@ include_directories("${INSPIREFACE_INCLUDE_DIR}")
 add_library(jinspireface SHARED
     src/jinspireface.cpp)
 
-set_target_properties(jinspireface PROPERTIES VERSION "1.0.0")
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
