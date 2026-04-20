@@ -3,16 +3,13 @@ package io.metaloom.inspireface4j.example;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.opencv.core.Mat;
-import org.opencv.imgproc.Imgproc;
+import io.metaloom.opencv.core.Mat;
+import io.metaloom.opencv.imgproc.Imgproc;
 import static io.metaloom.inspireface4j.SessionFeature.*;
 import io.metaloom.inspireface4j.BoundingBox;
 import io.metaloom.inspireface4j.Detection;
-import io.metaloom.inspireface4j.FaceAttributes;
-import io.metaloom.inspireface4j.FaceLandmark;
 import io.metaloom.inspireface4j.InspirefaceLib;
 import io.metaloom.inspireface4j.InspirefaceSession;
 import io.metaloom.inspireface4j.data.FaceDetections;
@@ -84,13 +81,13 @@ public class UsageExampleTest {
 
 					if (!detections.isEmpty()) {
 						// Extract the face embedding from the first face
-						float[] embedding = session.embedding(frame.mat(), detections, 0);
+						session.embedding(frame.mat(), detections, 0);
 						// Extract the face attributes
-						List<FaceAttributes> attrs = session.attributes(frame.mat(), detections, true);
+						session.attributes(frame.mat(), detections, true);
 
 						// Run landmark detection for each detected face
 						for (int i = 0; i < detections.size(); i++) {
-							List<FaceLandmark> landmarks = session.landmarks(frame.mat(), detections, i, true);
+							session.landmarks(frame.mat(), detections, i, true);
 						}
 					}
 

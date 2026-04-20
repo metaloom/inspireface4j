@@ -4,8 +4,8 @@ import java.awt.image.BufferedImage;
 import java.lang.foreign.MemorySegment;
 import java.util.List;
 
-import org.opencv.core.Mat;
-import org.opencv.imgproc.Imgproc;
+import io.metaloom.opencv.core.Mat;
+import io.metaloom.opencv.imgproc.Imgproc;
 
 import io.metaloom.inspireface4j.data.FaceDetections;
 import io.metaloom.video4j.impl.MatProvider;

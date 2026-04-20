@@ -7,9 +7,9 @@ import static io.metaloom.inspireface4j.SessionFeature.ENABLE_FACE_RECOGNITION;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
+import io.metaloom.opencv.core.Mat;
+import io.metaloom.opencv.core.Point;
+import io.metaloom.opencv.core.Scalar;
 
 import io.metaloom.inspireface4j.data.FaceDetections;
 import io.metaloom.video4j.VideoFile;
@@ -36,7 +36,7 @@ public class InpirefaceLibVideoTest extends AbstractInspireFaceLibTest {
 					FaceDetections detections = session.detect(imageMat, false);
 					if (!detections.isEmpty()) {
 						// InspirefaceLib.embedding(imageMat, detections, 0);
-						List<FaceAttributes> attrs = session.attributes(imageMat, detections, true);
+						session.attributes(imageMat, detections, true);
 						for (int i = 0; i < detections.size(); i++) {
 							session.landmarks(imageMat, detections, 0, true);
 						}

@@ -24,10 +24,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
-import org.opencv.imgproc.Imgproc;
+import io.metaloom.opencv.core.Mat;
+import io.metaloom.opencv.core.Point;
+import io.metaloom.opencv.core.Scalar;
+import io.metaloom.opencv.imgproc.Imgproc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -235,7 +235,7 @@ public class InspirefaceLib {
 				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_BOOLEAN));
 
 		try {
-			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
+			MemorySegment imageSeg = imageMat.nativePtr();
 			MemorySegment multipleFaceData = (MemorySegment) detectHandler.invoke(session.data(), imageSeg, false);
 			multipleFaceData = multipleFaceData.reinterpret(HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteSize());
 			FaceDetections detections = mapFaceDetections(multipleFaceData);
@@ -271,7 +271,7 @@ public class InspirefaceLib {
 					ValueLayout.JAVA_BOOLEAN));
 
 		try {
-			MemorySegment imageSeg = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
+			MemorySegment imageSeg = imageMat.nativePtr();
 			MemorySegment pointData = (MemorySegment) landmarksHandler.invoke(session.data(), detections.data().segment(), imageSeg, faceNr,
 				false);
 			List<FaceLandmark> landmarks = mapPointData(pointData);
@@ -317,7 +317,7 @@ public class InspirefaceLib {
 				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
 		try {
-			MemorySegment imageAttr = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
+			MemorySegment imageAttr = imageMat.nativePtr();
 			MemorySegment attrData = (MemorySegment) attrHandler.invoke(session.data(), detections.data().segment(), imageAttr);
 
 			HFFaceAttributeResult attr = new HFFaceAttributeResult(attrData);
@@ -369,7 +369,7 @@ public class InspirefaceLib {
 				FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
 		try {
-			MemorySegment imageAttr = MemorySegment.ofAddress(imageMat.getNativeObjAddr());
+			MemorySegment imageAttr = imageMat.nativePtr();
 			MemorySegment embeddingData = (MemorySegment) attrHandler.invoke(session.data(), detections.data().segment(), imageAttr, faceNr);
 			HFFaceFeature attr = new HFFaceFeature(embeddingData);
 			return attr.data();
