@@ -26,7 +26,7 @@ CUDA support using TensorRT is currently not working.
 <dependency>
   <groupId>io.metaloom.inspireface4j</groupId>
   <artifactId>inspireface4j</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -103,13 +103,13 @@ try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, E
 
 			if (!detections.isEmpty()) {
 				// Extract the face embedding from the first face
-				float[] embedding = session.embedding(frame.mat(), detections, 0);
+				session.embedding(frame.mat(), detections, 0);
 				// Extract the face attributes
-				List<FaceAttributes> attrs = session.attributes(frame.mat(), detections, true);
+				session.attributes(frame.mat(), detections, true);
 
 				// Run landmark detection for each detected face
 				for (int i = 0; i < detections.size(); i++) {
-					List<FaceLandmark> landmarks = session.landmarks(frame.mat(), detections, i, true);
+					session.landmarks(frame.mat(), detections, i, true);
 				}
 			}
 
