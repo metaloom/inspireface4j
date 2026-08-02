@@ -84,10 +84,12 @@ Feeding pixels from an existing decoder skips AWT entirely:
 FaceImage img = FaceImage.ofBgrBytes(width, height, bgrBytes);
 ```
 
-Video, via [video4j](https://github.com/metaloom/video4j):
+Video, via [video4j](https://github.com/metaloom/video4j) — detections printed and drawn onto the
+frame, in a viewer window:
 
 ```java
 Video4j.init();
+SimpleImageViewer viewer = new SimpleImageViewer();
 
 Face reference = null;
 List<Double> identity = new ArrayList<>();
@@ -108,19 +110,32 @@ try (FacePipeline faces = Yunet4j.pipeline(Path.of("models"));
 			// interpolation and move the boxes.
 			FaceImage img = toFaceImage(frame.mat());
 
-			Optional<Face> found = faces.primaryFace(img, faces.detect(img));
-			if (found.isEmpty()) {
-				continue;
-			}
-			Face face = found.get().withEmbedding(faces.embed(img, found.get()));
+			List<Face> detections = faces.detect(img);
 
-			// Embeddings from separate calls are directly comparable, so "is this still
-			// the same person" needs no state beyond one reference vector — no tracker,
-			// no frame-to-frame association.
-			if (reference == null) {
-				reference = face;
+			// Print the detections, and draw them onto the frame the viewer shows.
+			// Drawing after the conversion above, so the boxes never reach the model.
+			for (Face detection : detections) {
+				BoundingBox box = detection.box();
+				System.out.println("Frame[" + video.currentFrame() + "] = "
+					+ detection.score() + " @ " + box);
+				CVUtils.drawRect(frame.mat(), (int) box.x1(), (int) box.y1(),
+					(int) box.width(), (int) box.height(), new Scalar(0, 255, 0));
 			}
-			identity.add(reference.similarity(face));
+
+			// The single face a portrait pipeline wants, embedded and compared against
+			// the first frame's. Embeddings from separate calls are directly comparable,
+			// so "is this still the same person" needs no state beyond one reference
+			// vector — no tracker, no frame-to-frame association.
+			Optional<Face> found = faces.primaryFace(img, detections);
+			if (found.isPresent()) {
+				Face face = found.get().withEmbedding(faces.embed(img, found.get()));
+				if (reference == null) {
+					reference = face;
+				}
+				identity.add(reference.similarity(face));
+			}
+
+			viewer.show(frame.mat());
 		}
 	}
 }
@@ -137,7 +152,8 @@ System.out.printf("a face in %d frames -- identity median %.3f, p10 %.3f, worst 
 
 video4j hands out an OpenCV `Mat` and this module keeps OpenCV off its compile path — the
 dependency is **test scope**, and `FaceImage` is a plain byte array precisely so an application
-already holding OpenCV 4.x is not forced onto video4j's 5.x. The whole bridge:
+holding its own OpenCV is not forced onto video4j's (currently 4.10, via `opencv-ffm`). The whole
+bridge:
 
 ```java
 /** OpenCV {@code CV_8UC3} is BGR, row-major, stride {@code width * 3} — FaceImage's layout. */
@@ -154,10 +170,15 @@ private static FaceImage toFaceImage(Mat mat) {
 }
 ```
 
-Two things that example is showing on purpose. Frames are closed — video4j allocates a `Mat` per
-frame and native memory is invisible to the garbage collector, so a long clip without the
-try-with-resources grows until the OS intervenes. And there is no resize step: the detector caps
-the long edge itself, so adding one only costs a second interpolation and moves the boxes.
+Three things that example is doing on purpose:
+
+- **Frames are closed.** video4j allocates a `Mat` per frame and native memory is invisible to the
+  garbage collector, so a long clip without the try-with-resources grows until the OS intervenes
+  rather than the JVM.
+- **No resize step.** The detector caps the long edge itself, so adding one only costs a second
+  interpolation and moves the boxes.
+- **Boxes are drawn after the conversion**, onto the `Mat` the viewer shows. Draw first and the
+  rectangles are part of the pixels the model sees.
 
 The types used above come from `facedetect4j-api` and are documented [there](../api).
 

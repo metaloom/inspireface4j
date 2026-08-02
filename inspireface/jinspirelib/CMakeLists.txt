@@ -10,10 +10,10 @@ message(STATUS "INSPIREFACE_LIB_DIR: ${INSPIREFACE_LIB_DIR}")
 option(TENSOR_RT_DIR "Path to built TensorRT directory." STRING)
 message(STATUS "TENSOR_RT_DIR: ${TENSOR_RT_DIR}")
 
-# OpenCV 5 – set OpenCV_DIR via cmake -DOpenCV_DIR=... or the environment to make
-# sure we do not accidentally link against an older system wide OpenCV 4.
+# Set OpenCV_DIR via cmake -DOpenCV_DIR=... or the environment, so the OpenCV linked here is
+# chosen rather than whichever one happens to be installed system wide.
 if(DEFINED ENV{OpenCV_DIR} AND NOT OpenCV_DIR)
-    set(OpenCV_DIR $ENV{OpenCV_DIR} CACHE PATH "Path to the OpenCV 5 build directory")
+    set(OpenCV_DIR $ENV{OpenCV_DIR} CACHE PATH "Path to the OpenCV build directory")
 endif()
 
 if(OpenCV_DIR)
@@ -25,8 +25,17 @@ endif()
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 message(STATUS "OpenCV include dirs: ${OpenCV_INCLUDE_DIRS}")
 
-if(OpenCV_VERSION VERSION_LESS 5.0)
-    message(FATAL_ERROR "OpenCV 5 is required but found ${OpenCV_VERSION}. Pass -DOpenCV_DIR=<opencv5-build-dir>.")
+# This must be the same OpenCV major that opencv-ffm binds, which the Java side reaches through
+# video4j (io.metaloom.opencv:opencv-ffm, versioned to track its OpenCV: 4.10.0 -> OpenCV 4.10).
+# video4j allocates the cv::Mat and this library dereferences the pointer, so a mismatch is not a
+# link error and not a missing symbol - it is one OpenCV's struct read through another's headers,
+# in the same address space, with both libraries loaded. Wrong-but-plausible pixel data at best.
+set(REQUIRED_OPENCV_MAJOR 4 CACHE STRING "OpenCV major version that opencv-ffm is built against")
+if(NOT OpenCV_VERSION_MAJOR VERSION_EQUAL REQUIRED_OPENCV_MAJOR)
+    message(FATAL_ERROR
+        "OpenCV ${REQUIRED_OPENCV_MAJOR}.x is required to match opencv-ffm, but found "
+        "${OpenCV_VERSION}. Pass -DOpenCV_DIR=<build-dir>, and if opencv-ffm itself has moved "
+        "major version, -DREQUIRED_OPENCV_MAJOR=<n> together with it.")
 endif()
 
 #include_directories("../InspireFace/cpp/inspireface/c_api/")

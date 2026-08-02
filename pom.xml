@@ -49,7 +49,14 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <video4j.version>2.0.0-SNAPSHOT</video4j.version>
+        <!--
+          video4j and opencv-ffm share a version line that tracks the OpenCV they bind, so 4.10.0
+          here means OpenCV 4.10 and the two must be bumped together. opencv-ffm arrives
+          transitively through video4j but is pinned anyway: it decides which OpenCV natives land
+          in the JVM, and inspireface's own shim has to be built against the same major.
+        -->
+        <video4j.version>4.10.0-SNAPSHOT</video4j.version>
+        <opencv-ffm.version>4.10.0-SNAPSHOT</opencv-ffm.version>
         <!--
           onnxruntime_gpu, not onnxruntime: the CPU artifact contains no CUDA execution provider,
           so Device.cuda() could never be satisfied with it. The Maven artifact is a CUDA 12 build
@@ -100,6 +107,11 @@
                 <groupId>io.metaloom.video</groupId>
                 <artifactId>video4j</artifactId>
                 <version>${video4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.metaloom.opencv</groupId>
+                <artifactId>opencv-ffm</artifactId>
+                <version>${opencv-ffm.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.assertj</groupId>

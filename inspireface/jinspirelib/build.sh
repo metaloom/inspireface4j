@@ -9,9 +9,10 @@ INSPIREFACE_INCLUDE_DIR="${INSPIREFACE_DIR}/include"
 INSPIREFACE_LIB_DIR="${INSPIREFACE_DIR}/lib"
 TENSOR_RT_DIR="${CURRENT_DIR}/../TensorRT-10.8.0.43"
 
-# OpenCV 5 build (or install) directory that contains OpenCVConfig.cmake.
+# OpenCV build (or install) directory that contains OpenCVConfig.cmake. This has to be the same
+# OpenCV major that opencv-ffm binds -- see the rationale in CMakeLists.txt, which enforces it.
 # Override via the OpenCV_DIR environment variable or the first argument.
-OPENCV_DIR="${1:-${OpenCV_DIR:-${CURRENT_DIR}/../../opencv/build}}"
+OPENCV_DIR="${1:-${OpenCV_DIR:-${CURRENT_DIR}/../../../opencv-4.10.0/build}}"
 
 RESOURCES_DIR="${CURRENT_DIR}/../src/main/resources/native/linux"
 
@@ -19,8 +20,9 @@ RESOURCES_DIR="${CURRENT_DIR}/../src/main/resources/native/linux"
 usage() {
     echo "Usage: $0 [OpenCV_DIR]"
     echo
-    echo "  OpenCV_DIR  Directory containing OpenCVConfig.cmake of an OpenCV 5 build."
-    echo "              Defaults to \$OpenCV_DIR or ../../opencv/build"
+    echo "  OpenCV_DIR  Directory containing OpenCVConfig.cmake, of the same OpenCV major that"
+    echo "              opencv-ffm is built against (currently 4.10)."
+    echo "              Defaults to \$OpenCV_DIR or ../../../opencv-4.10.0/build"
     echo
     echo "Environment:"
     echo "  INSPIREFACE_VERSION  InspireFace release to build against (default: 1.2.3)"
@@ -68,12 +70,18 @@ build_project() {
 
 build_project "Release"
 
-# Bundle the matching InspireFace runtime next to the built binding
-echo "Copying libInspireFace.so (${INSPIREFACE_VERSION}) to ${RESOURCES_DIR} ..."
-mkdir -p "${RESOURCES_DIR}"
-cp "${INSPIREFACE_LIB_DIR}/libInspireFace.so" "${RESOURCES_DIR}/libInspireFace.so"
+# CMake links libjinspireface.so straight into ${RESOURCES_DIR}, so the build is already done.
+#
+# libInspireFace.so is deliberately NOT copied from the release here. The 1.2.3 release ships with
+# an executable stack, which the JVM refuses to load; the copy in resources has already had that
+# bit cleared and is the one that works. Overwriting it with the raw release file - which is what
+# this script used to do, followed by a clear-execstack.py that is not in the tree - leaves a
+# runtime that fails at load with no indication that a build step did it.
+if [[ ! -f "${RESOURCES_DIR}/libInspireFace.so" ]]; then
+    echo "ERROR: ${RESOURCES_DIR}/libInspireFace.so is missing." >&2
+    echo "Restore it from git rather than copying ${INSPIREFACE_LIB_DIR}/libInspireFace.so:" >&2
+    echo "  the release file needs its PT_GNU_STACK executable bit cleared first." >&2
+    exit 1
+fi
 
-# The 1.2.3 release ships with an executable stack which the JVM refuses to load
-python3 "${CURRENT_DIR}/clear-execstack.py" "${RESOURCES_DIR}/libInspireFace.so"
-
-echo "Build completed successfully."
+echo "Build completed successfully -- wrote ${RESOURCES_DIR}/libjinspireface.so"

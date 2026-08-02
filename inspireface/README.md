@@ -138,12 +138,13 @@ try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, E
 ### Requirements:
 
 - [InspireFace 1.2.3](https://github.com/HyperInspire/InspireFace)
-- [OpenCV 5.x](https://github.com/opencv/opencv) (the same build that [opencv-ffm](https://github.com/metaloom/opencv-ffm) is built against)
+- [OpenCV 4.10](https://github.com/opencv/opencv) — **the same major that
+  [opencv-ffm](https://github.com/metaloom/opencv-ffm) is built against**, which its version tracks
+  (`opencv-ffm 4.10.0` → OpenCV 4.10). `CMakeLists.txt` enforces this; see below for why.
 - JDK 25 or newer
 - Maven
 - GCC 13 or newer
 - CMake 3.16+
-- Python 3 (used to clear the executable stack flag of the shipped `libInspireFace.so`)
 
 ### Building native code
 
@@ -154,13 +155,13 @@ wget https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspir
 unp inspireface-linux-x86-ubuntu18-1.2.3.zip
 
 cd jinspirelib
-# The OpenCV 5 build directory (the one that contains OpenCVConfig.cmake).
-# Defaults to ../../opencv/build - pass it explicitly or via the OpenCV_DIR env var.
+# The OpenCV build directory (the one that contains OpenCVConfig.cmake), of the same major that
+# opencv-ffm binds. Defaults to ../../../opencv-4.10.0/build - pass it explicitly or via OpenCV_DIR.
 ./build.sh /path/to/opencv/build
 ```
 
-The script builds `libjinspireface.so` into `src/main/resources/native/linux` and copies the
-matching `libInspireFace.so` next to it.
+The script builds `libjinspireface.so` into `src/main/resources/native/linux`. It deliberately does
+**not** copy `libInspireFace.so` from the release — see below.
 
 A different InspireFace release can be selected via `INSPIREFACE_VERSION=1.2.x ./build.sh`.
 
@@ -173,14 +174,23 @@ the JVM refuses to load:
 UnsatisfiedLinkError: cannot enable executable stack as shared object requires
 ```
 
-`build.sh` therefore runs `jinspirelib/clear-execstack.py` on the bundled copy of the library,
-which clears the flag (the equivalent of `execstack -c`).
+The copy checked in under `src/main/resources/native/linux/` has already had that flag cleared and
+is the one that works. `build.sh` used to re-copy the raw release file over it and then run a
+`clear-execstack.py` that is **not in this tree** — so the build left behind a runtime the JVM
+refuses to load, with nothing pointing at the build step as the cause. It no longer copies at all;
+it fails loudly if the checked-in library is missing.
 
-### Notes on OpenCV 5
+### The OpenCV major must match opencv-ffm
 
-OpenCV 5 changed `CV_CN_SHIFT` from 3 to 5, so the numeric values of the `CV_8UC3` and friends
-type constants differ from OpenCV 4. Always create Mats via `CvType` constants - a mat created
-with a stale type value silently holds garbage and the drawing calls will fail with
+`libjinspireface.so` and `libopencv_ffm.so` are loaded into the same address space, and video4j
+allocates the `cv::Mat` that this library dereferences. A mismatch is not a link error and not a
+missing symbol — it is one OpenCV's struct read through another's headers. `CMakeLists.txt` fails
+the build rather than let that happen; if opencv-ffm moves major version, pass
+`-DREQUIRED_OPENCV_MAJOR=<n>` along with the new `OpenCV_DIR`.
+
+The concrete hazard: OpenCV 5 changed `CV_CN_SHIFT` from 3 to 5, so the numeric values of
+`CV_8UC3` and friends differ between majors. Always create Mats via `CvType` constants — a mat
+created with a stale type value silently holds garbage and the drawing calls will fail with
 `img.depth() == CV_8U` assertions.
 
 ### Notes for building from source

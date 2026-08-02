@@ -1,8 +1,10 @@
 package io.metaloom.facedetect4j.yunet.example;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.awt.GraphicsEnvironment;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -13,6 +15,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import io.metaloom.facedetect4j.api.AlignedFace;
+import io.metaloom.facedetect4j.api.BoundingBox;
 import io.metaloom.facedetect4j.api.Device;
 import io.metaloom.facedetect4j.api.Face;
 import io.metaloom.facedetect4j.api.FaceImage;
@@ -21,9 +24,12 @@ import io.metaloom.facedetect4j.api.TestData;
 import io.metaloom.facedetect4j.yunet.GpuProbe;
 import io.metaloom.facedetect4j.yunet.Yunet4j;
 import io.metaloom.opencv.core.Mat;
+import io.metaloom.opencv.core.Scalar;
 import io.metaloom.video4j.Video4j;
 import io.metaloom.video4j.VideoFile;
 import io.metaloom.video4j.VideoFrame;
+import io.metaloom.video4j.opencv.CVUtils;
+import io.metaloom.video4j.utils.SimpleImageViewer;
 
 /**
  * The examples that the README is generated from. They are tests rather than a doc comment so that
@@ -112,9 +118,13 @@ public class UsageExampleTest {
 	public void testVideoUsageExample() throws Exception {
 		requireModelsAndGpu();
 		assumeTrue(Files.isRegularFile(clip), "test clip missing: " + clip);
+		// The example opens a window, which is the point of it. Skipped rather than failed on a
+		// headless machine, where SimpleImageViewer's JFrame throws before the first frame.
+		assumeFalse(GraphicsEnvironment.isHeadless(), "no display -- this example shows a window");
 
 		// SNIPPET START video-usage.example
 		Video4j.init();
+		SimpleImageViewer viewer = new SimpleImageViewer();
 
 		Face reference = null;
 		List<Double> identity = new ArrayList<>();
@@ -135,19 +145,32 @@ public class UsageExampleTest {
 					// interpolation and move the boxes.
 					FaceImage img = toFaceImage(frame.mat());
 
-					Optional<Face> found = faces.primaryFace(img, faces.detect(img));
-					if (found.isEmpty()) {
-						continue;
-					}
-					Face face = found.get().withEmbedding(faces.embed(img, found.get()));
+					List<Face> detections = faces.detect(img);
 
-					// Embeddings from separate calls are directly comparable, so "is this still
-					// the same person" needs no state beyond one reference vector — no tracker,
-					// no frame-to-frame association.
-					if (reference == null) {
-						reference = face;
+					// Print the detections, and draw them onto the frame the viewer shows.
+					// Drawing after the conversion above, so the boxes never reach the model.
+					for (Face detection : detections) {
+						BoundingBox box = detection.box();
+						System.out.println("Frame[" + video.currentFrame() + "] = "
+							+ detection.score() + " @ " + box);
+						CVUtils.drawRect(frame.mat(), (int) box.x1(), (int) box.y1(),
+							(int) box.width(), (int) box.height(), new Scalar(0, 255, 0));
 					}
-					identity.add(reference.similarity(face));
+
+					// The single face a portrait pipeline wants, embedded and compared against
+					// the first frame's. Embeddings from separate calls are directly comparable,
+					// so "is this still the same person" needs no state beyond one reference
+					// vector — no tracker, no frame-to-frame association.
+					Optional<Face> found = faces.primaryFace(img, detections);
+					if (found.isPresent()) {
+						Face face = found.get().withEmbedding(faces.embed(img, found.get()));
+						if (reference == null) {
+							reference = face;
+						}
+						identity.add(reference.similarity(face));
+					}
+
+					viewer.show(frame.mat());
 				}
 			}
 		}

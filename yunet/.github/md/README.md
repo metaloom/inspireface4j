@@ -49,7 +49,8 @@ Feeding pixels from an existing decoder skips AWT entirely:
 FaceImage img = FaceImage.ofBgrBytes(width, height, bgrBytes);
 ```
 
-Video, via [video4j](https://github.com/metaloom/video4j):
+Video, via [video4j](https://github.com/metaloom/video4j) — detections printed and drawn onto the
+frame, in a viewer window:
 
 ```java
 %{snippet|id=video-usage.example|file=src/test/java/io/metaloom/facedetect4j/yunet/example/UsageExampleTest.java}
@@ -57,16 +58,22 @@ Video, via [video4j](https://github.com/metaloom/video4j):
 
 video4j hands out an OpenCV `Mat` and this module keeps OpenCV off its compile path — the
 dependency is **test scope**, and `FaceImage` is a plain byte array precisely so an application
-already holding OpenCV 4.x is not forced onto video4j's 5.x. The whole bridge:
+holding its own OpenCV is not forced onto video4j's (currently 4.10, via `opencv-ffm`). The whole
+bridge:
 
 ```java
 %{snippet|id=video-usage.bridge|file=src/test/java/io/metaloom/facedetect4j/yunet/example/UsageExampleTest.java}
 ```
 
-Two things that example is showing on purpose. Frames are closed — video4j allocates a `Mat` per
-frame and native memory is invisible to the garbage collector, so a long clip without the
-try-with-resources grows until the OS intervenes. And there is no resize step: the detector caps
-the long edge itself, so adding one only costs a second interpolation and moves the boxes.
+Three things that example is doing on purpose:
+
+- **Frames are closed.** video4j allocates a `Mat` per frame and native memory is invisible to the
+  garbage collector, so a long clip without the try-with-resources grows until the OS intervenes
+  rather than the JVM.
+- **No resize step.** The detector caps the long edge itself, so adding one only costs a second
+  interpolation and moves the boxes.
+- **Boxes are drawn after the conversion**, onto the `Mat` the viewer shows. Draw first and the
+  rectangles are part of the pixels the model sees.
 
 The types used above come from `facedetect4j-api` and are documented [there](../api).
 

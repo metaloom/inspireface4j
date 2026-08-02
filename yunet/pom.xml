@@ -40,10 +40,11 @@
             <scope>test</scope>
         </dependency>
         <!--
-          Test scope only, and it must stay that way. video4j brings OpenCV 5.1 FFM natives with
-          it; keeping them out of the compile scope is what lets an application already holding
-          OpenCV 4.x use this module. FaceImage is a plain byte array precisely so that boundary
-          stays optional - see the video example for the four lines that cross it.
+          Test scope only, and it must stay that way. video4j brings OpenCV FFM natives with it
+          (currently 4.10, via opencv-ffm); keeping them out of the compile scope is what lets an
+          application holding a different OpenCV use this module at all. FaceImage is a plain byte
+          array precisely so that boundary stays optional - see the video example for the four
+          lines that cross it.
         -->
         <dependency>
             <groupId>io.metaloom.video</groupId>
