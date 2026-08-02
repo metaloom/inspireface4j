@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.0.0)
-project(yolo_ort)
+cmake_minimum_required(VERSION 3.16)
+project(jinspireface)
 
 option(INSPIREFACE_INCLUDE_DIR "Path to source InspireFace include directory." STRING)
 message(STATUS "INSPIREFACE_INCLUDE_DIR: ${INSPIREFACE_INCLUDE_DIR}")
@@ -10,7 +10,24 @@ message(STATUS "INSPIREFACE_LIB_DIR: ${INSPIREFACE_LIB_DIR}")
 option(TENSOR_RT_DIR "Path to built TensorRT directory." STRING)
 message(STATUS "TENSOR_RT_DIR: ${TENSOR_RT_DIR}")
 
-find_package(OpenCV REQUIRED)
+# OpenCV 5 – set OpenCV_DIR via cmake -DOpenCV_DIR=... or the environment to make
+# sure we do not accidentally link against an older system wide OpenCV 4.
+if(DEFINED ENV{OpenCV_DIR} AND NOT OpenCV_DIR)
+    set(OpenCV_DIR $ENV{OpenCV_DIR} CACHE PATH "Path to the OpenCV 5 build directory")
+endif()
+
+if(OpenCV_DIR)
+    find_package(OpenCV REQUIRED PATHS ${OpenCV_DIR} NO_DEFAULT_PATH)
+else()
+    find_package(OpenCV REQUIRED)
+endif()
+
+message(STATUS "OpenCV version: ${OpenCV_VERSION}")
+message(STATUS "OpenCV include dirs: ${OpenCV_INCLUDE_DIRS}")
+
+if(OpenCV_VERSION VERSION_LESS 5.0)
+    message(FATAL_ERROR "OpenCV 5 is required but found ${OpenCV_VERSION}. Pass -DOpenCV_DIR=<opencv5-build-dir>.")
+endif()
 
 #include_directories("../InspireFace/cpp/inspireface/c_api/")
 #include_directories("../InspireFace/cpp/inspireface/include/inspireface/")
@@ -30,11 +47,11 @@ include_directories("${INSPIREFACE_INCLUDE_DIR}")
 add_library(jinspireface SHARED
     src/jinspireface.cpp)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
-target_compile_features(jinspireface PRIVATE cxx_std_14)
+target_compile_features(jinspireface PRIVATE cxx_std_17)
 target_link_libraries(jinspireface ${OpenCV_LIBS})
 target_link_libraries(jinspireface "${INSPIREFACE_LIB_DIR}/libInspireFace.so")
 

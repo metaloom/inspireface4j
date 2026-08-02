@@ -14,6 +14,7 @@ public class HFMultipleFaceData {
 		MemoryLayout.paddingLayout(4),
 		ValueLayout.ADDRESS.withName("rects"), // HFaceRect*
 		ValueLayout.ADDRESS.withName("trackIds"), // HInt32*
+		ValueLayout.ADDRESS.withName("trackCounts"), // HInt32* (new in InspireFace 1.2.3)
 		ValueLayout.ADDRESS.withName("detConfidence"), // HFloat*
 		HFFaceEulerAngle.HFFACE_EULER_ANGLE_LAYOUT.withName("angles"), // embedded struct
 		ValueLayout.ADDRESS.withName("tokens") // HFFaceBasicToken*

@@ -24,10 +24,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import io.metaloom.opencv.core.CvType;
 import io.metaloom.opencv.core.Mat;
 import io.metaloom.opencv.core.Point;
 import io.metaloom.opencv.core.Scalar;
-import io.metaloom.opencv.imgproc.Imgproc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +85,7 @@ public class InspirefaceLib {
 
 		// Angular Data
 
-		long offsetAngles = 32; // After detConfidence
+		long offsetAngles = HFMultipleFaceData.DETECTION_ARRAY_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("angles"));
 		MemorySegment anglesStruct = multipleFaceData.asSlice(offsetAngles);
 		anglesStruct = anglesStruct.reinterpret(3 * ValueLayout.ADDRESS.byteSize());
 
@@ -127,8 +127,7 @@ public class InspirefaceLib {
 
 			MemorySegment rect = rectsArray.asSlice(i * HFaceRect.FACE_RECT_LAYOUT.byteSize(), HFaceRect.FACE_RECT_LAYOUT.byteSize());
 
-			// TODO fix conf
-			float conf = confArray.get(ValueLayout.JAVA_FLOAT, 0);
+			float conf = confArray.getAtIndex(ValueLayout.JAVA_FLOAT, i);
 			int x = (int) HFaceRect.X_HANDLE.get(rect, 0);
 			int y = (int) HFaceRect.Y_HANDLE.get(rect, 0);
 			int width = (int) HFaceRect.WIDTH_HANDLE.get(rect, 0);
@@ -301,7 +300,7 @@ public class InspirefaceLib {
 	}
 
 	public static FaceDetections detect(InspirefaceSession session, BufferedImage img) {
-		Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
+		Mat imageMat = MatProvider.mat(img, CvType.CV_8UC3);
 		CVUtils.bufferedImageToMat(img, imageMat);
 		FaceDetections detections = detect(session, imageMat, false);
 		MatProvider.released(imageMat);

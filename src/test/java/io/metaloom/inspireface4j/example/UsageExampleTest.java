@@ -5,8 +5,8 @@ import java.io.File;
 import java.io.IOException;
 
 import org.junit.jupiter.api.Test;
+import io.metaloom.opencv.core.CvType;
 import io.metaloom.opencv.core.Mat;
-import io.metaloom.opencv.imgproc.Imgproc;
 import static io.metaloom.inspireface4j.SessionFeature.*;
 import io.metaloom.inspireface4j.BoundingBox;
 import io.metaloom.inspireface4j.Detection;
@@ -37,7 +37,7 @@ public class UsageExampleTest {
 
 			// Load the image and invoke the detection
 			BufferedImage img = ImageUtils.load(new File(imagePath));
-			Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
+			Mat imageMat = MatProvider.mat(img, CvType.CV_8UC3);
 			CVUtils.bufferedImageToMat(img, imageMat);
 
 			// Invoke the detection

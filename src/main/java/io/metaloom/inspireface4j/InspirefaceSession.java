@@ -4,8 +4,8 @@ import java.awt.image.BufferedImage;
 import java.lang.foreign.MemorySegment;
 import java.util.List;
 
+import io.metaloom.opencv.core.CvType;
 import io.metaloom.opencv.core.Mat;
-import io.metaloom.opencv.imgproc.Imgproc;
 
 import io.metaloom.inspireface4j.data.FaceDetections;
 import io.metaloom.video4j.impl.MatProvider;
@@ -37,7 +37,7 @@ public class InspirefaceSession implements AutoCloseable {
 	 * @return
 	 */
 	public float[] embedding(BufferedImage image, FaceDetections detections, int faceNr) {
-		Mat imageMat = MatProvider.mat(image, Imgproc.COLOR_BGRA2BGR565);
+		Mat imageMat = MatProvider.mat(image, CvType.CV_8UC3);
 		CVUtils.bufferedImageToMat(image, imageMat);
 		float[] embedding = InspirefaceLib.embedding(this, imageMat, detections, faceNr);
 		MatProvider.released(imageMat);

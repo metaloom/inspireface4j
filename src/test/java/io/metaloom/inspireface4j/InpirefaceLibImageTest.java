@@ -11,8 +11,8 @@ import java.io.IOException;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import io.metaloom.opencv.core.CvType;
 import io.metaloom.opencv.core.Mat;
-import io.metaloom.opencv.imgproc.Imgproc;
 
 import io.metaloom.inspireface4j.data.FaceDetections;
 import io.metaloom.inspireface4j.data.internal.HFLogLevel;
@@ -32,7 +32,7 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 	public void testImage() throws Throwable {
 		BufferedImage img = ImageUtils.load(new File(RASTER_IMAGE_1K));
 		assertNotNull(img);
-		Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
+		Mat imageMat = MatProvider.mat(img, CvType.CV_8UC3);
 		CVUtils.bufferedImageToMat(img, imageMat);
 
 		System.out.println("Detect");
@@ -47,7 +47,7 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 	public void testOccludedFace() throws Throwable {
 		BufferedImage img = ImageUtils.load(new File(TestMedia.IMG_FACE_OCCLUDED));
 		assertNotNull(img);
-		Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
+		Mat imageMat = MatProvider.mat(img, CvType.CV_8UC3);
 		CVUtils.bufferedImageToMat(img, imageMat);
 
 		System.out.println("Detect");
@@ -65,12 +65,12 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 
 		System.out.println("Detect");
 		try (InspirefaceSession session = InspirefaceLib.session(PACK_PATH, 640, ENABLE_FACE_ATTRIBUTE, ENABLE_FACE_RECOGNITION)) {
-			Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
+			Mat imageMat = MatProvider.mat(img, CvType.CV_8UC3);
 			CVUtils.bufferedImageToMat(img, imageMat);
 			detect(session, imageMat, true);
 		}
 		try (InspirefaceSession session = InspirefaceLib.session(PACK_PATH, 640, ENABLE_FACE_ATTRIBUTE, ENABLE_FACE_RECOGNITION)) {
-			Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
+			Mat imageMat = MatProvider.mat(img, CvType.CV_8UC3);
 			CVUtils.bufferedImageToMat(img, imageMat);
 			detect(session, imageMat, true);
 		}
@@ -83,7 +83,7 @@ public class InpirefaceLibImageTest extends AbstractInspireFaceLibTest {
 		BufferedImage img = ImageUtils.load(new File(SOLO_IMAGE_1K));
 		img = ImageUtils.scale(img, 640, 640);
 		assertNotNull(img);
-		Mat imageMat = MatProvider.mat(img, Imgproc.COLOR_BGRA2BGR565);
+		Mat imageMat = MatProvider.mat(img, CvType.CV_8UC3);
 		CVUtils.bufferedImageToMat(img, imageMat);
 
 		System.out.println("Detect");

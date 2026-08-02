@@ -66,22 +66,51 @@ Video Example
 
 ### Requirements:
 
-- [InspireFace 1.2.1](https://github.com/HyperInspire/InspireFace)
-- JDK 23 or newer
+- [InspireFace 1.2.3](https://github.com/HyperInspire/InspireFace)
+- [OpenCV 5.x](https://github.com/opencv/opencv) (the same build that [opencv-ffm](https://github.com/metaloom/opencv-ffm) is built against)
+- JDK 25 or newer
 - Maven
-- GCC 13
+- GCC 13 or newer
+- CMake 3.16+
+- Python 3 (used to clear the executable stack flag of the shipped `libInspireFace.so`)
 
 ### Building native code
 
 ```bash
-# Download and extract inspireface-linux-x86-ubuntu18-1.2.1.zip from https://github.com/HyperInspire/InspireFace/releases
+# Download and extract inspireface-linux-x86-ubuntu18-1.2.3.zip from https://github.com/HyperInspire/InspireFace/releases
 cd  inspireface4j
-wget https://github.com/HyperInspire/InspireFace/releases/download/v1.2.1/inspireface-linux-x86-ubuntu18-1.2.1.zip
-unp inspireface-linux-x86-ubuntu18-1.2.1.zip
+wget https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-linux-x86-ubuntu18-1.2.3.zip
+unp inspireface-linux-x86-ubuntu18-1.2.3.zip
 
 cd jinspirelib
-./build.sh
+# The OpenCV 5 build directory (the one that contains OpenCVConfig.cmake).
+# Defaults to ../../opencv/build - pass it explicitly or via the OpenCV_DIR env var.
+./build.sh /path/to/opencv/build
 ```
+
+The script builds `libjinspireface.so` into `src/main/resources/native/linux` and copies the
+matching `libInspireFace.so` next to it.
+
+A different InspireFace release can be selected via `INSPIREFACE_VERSION=1.2.x ./build.sh`.
+
+### Notes on the shipped InspireFace binary
+
+The upstream 1.2.3 Linux release is linked with an executable stack (`GNU_STACK` = `RWE`), which
+the JVM refuses to load:
+
+```
+UnsatisfiedLinkError: cannot enable executable stack as shared object requires
+```
+
+`build.sh` therefore runs `jinspirelib/clear-execstack.py` on the bundled copy of the library,
+which clears the flag (the equivalent of `execstack -c`).
+
+### Notes on OpenCV 5
+
+OpenCV 5 changed `CV_CN_SHIFT` from 3 to 5, so the numeric values of the `CV_8UC3` and friends
+type constants differ from OpenCV 4. Always create Mats via `CvType` constants - a mat created
+with a stale type value silently holds garbage and the drawing calls will fail with
+`img.depth() == CV_8U` assertions.
 
 ### Notes for building from source
 
@@ -99,7 +128,7 @@ git clone git@github.com:deepinsight/insightface.git
 
 ### CUDA support
 
-I tried to build the project using TensorRT + CUDA but failed. I also had issues with `inspireface-linux-tensorrt-cuda12.2_ubuntu22.04-1.2.1.zip`.
+I tried to build the project using TensorRT + CUDA but failed. I also had issues with `inspireface-linux-tensorrt-cuda12.2_ubuntu22.04-1.2.x.zip`.
 
 ## Releasing
 
@@ -111,4 +140,8 @@ git add pom.xml ; git commit -m "Prepare release"
 # Invoke release
 mvn clean deploy -Drelease
 ```
+
+## Attribution
+
+Portions of the code in this project were co-authored with the assistance of AI.
 
