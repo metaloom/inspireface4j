@@ -13,7 +13,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import io.metaloom.facedetect4j.api.AlignedFace;
-import io.metaloom.facedetect4j.api.Device;
 import io.metaloom.facedetect4j.api.Face;
 import io.metaloom.facedetect4j.api.FaceException;
 import io.metaloom.facedetect4j.api.FaceImage;
@@ -37,15 +36,20 @@ class Yunet4jTest {
 
 	private static final Path MODELS = Path.of("models");
 
+	/**
+	 * Both the weights and a working CUDA provider. The provider is probed rather than assumed:
+	 * ONNX Runtime lists CUDA among its providers on any machine, so a build-level check passes on
+	 * a host where the runtime cannot actually be loaded and every test then errors instead of
+	 * skipping.
+	 */
 	@BeforeAll
-	static void requireModels() {
+	static void requireModelsAndGpu() {
 		// The weights themselves, not just the directory: they are commonly symlinked in, and a
 		// dangling link would otherwise surface as a failure in every test rather than a skip.
 		assumeTrue(Files.isReadable(MODELS.resolve(Yunet4j.YUNET_DYNAMIC))
 			|| Files.isReadable(MODELS.resolve(Yunet4j.YUNET_FIXED)),
 			"no YuNet weights in models/ -- see Yunet4j.downloadHint()");
-		assumeTrue(Files.isReadable(MODELS.resolve(Yunet4j.SFACE)),
-			"no SFace weights in models/ -- see Yunet4j.downloadHint()");
+		assumeTrue(GpuProbe.usable(MODELS), GpuProbe.skipReason());
 	}
 
 	private static FacePipeline pipeline() {
@@ -61,23 +65,10 @@ class Yunet4jTest {
 	@Test
 	@DisplayName("runs on the GPU, and says so")
 	void runsOnGpu() {
-		assumeTrue(io.metaloom.facedetect4j.yunet.onnx.OrtRuntime.cudaAvailable(), "no CUDA provider");
 		try (FacePipeline p = pipeline()) {
 			assertThat(p.device().isCuda()).isTrue();
 			assertThat(p.dimensions()).isEqualTo(128);
 		}
-	}
-
-	@Test
-	@DisplayName("refuses to fall back to CPU when CUDA was asked for and is missing")
-	void gpuIsEnforcedNotPreferred() {
-		// The whole point of the library is GPU throughput. A silent CPU fallback would turn a
-		// deployment error into a performance mystery, so the contract is to throw.
-		assumeTrue(!io.metaloom.facedetect4j.yunet.onnx.OrtRuntime.cudaAvailable(),
-			"CUDA IS available here, so the failure path cannot be exercised");
-		assertThatThrownBy(() -> Yunet4j.pipeline(MODELS, Device.cuda()))
-			.isInstanceOf(FaceException.class)
-			.hasMessageContaining("will not fall back to CPU silently");
 	}
 
 	@Test

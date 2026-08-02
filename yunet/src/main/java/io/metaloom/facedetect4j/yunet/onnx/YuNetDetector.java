@@ -157,6 +157,15 @@ public class YuNetDetector implements FaceDetector {
 					scoreThreshold, nmsThreshold, topK);
 			}
 		} catch (OrtException e) {
+			// cuDNN is dlopen'd lazily, at the first Conv, so a missing one only surfaces here:
+			// the provider attached and the session opened without complaint. Untranslated, this
+			// reads as a model problem rather than the setup problem it is.
+			if (String.valueOf(e.getMessage()).toLowerCase().contains("cudnn")) {
+				throw new FaceException("YuNet inference failed because cuDNN is unavailable. The "
+					+ "CUDA provider attached and the session opened, so this surfaces only now -- "
+					+ "ONNX Runtime loads libcudnn.so lazily at the first Conv node. "
+					+ OrtRuntime.cudaSetupHint() + " Underlying error: " + e.getMessage(), e);
+			}
 			throw new FaceException("YuNet inference failed", e);
 		}
 	}

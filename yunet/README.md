@@ -84,6 +84,81 @@ Feeding pixels from an existing decoder skips AWT entirely:
 FaceImage img = FaceImage.ofBgrBytes(width, height, bgrBytes);
 ```
 
+Video, via [video4j](https://github.com/metaloom/video4j):
+
+```java
+Video4j.init();
+
+Face reference = null;
+List<Double> identity = new ArrayList<>();
+
+try (FacePipeline faces = Yunet4j.pipeline(Path.of("models"));
+	VideoFile video = VideoFile.open(clip)) {
+
+	VideoFrame decoded;
+	while ((decoded = video.frame()) != null) {
+
+		// try-with-resources releases the frame's Mat. video4j allocates a fresh one per
+		// frame and native memory is invisible to the garbage collector, so a long clip
+		// processed without this grows until the OS intervenes rather than the JVM.
+		try (VideoFrame frame = decoded) {
+
+			// No resize step: the detector caps the long edge itself
+			// (YuNetDetector.setMaxInputEdge), so one here would only add a second
+			// interpolation and move the boxes.
+			FaceImage img = toFaceImage(frame.mat());
+
+			Optional<Face> found = faces.primaryFace(img, faces.detect(img));
+			if (found.isEmpty()) {
+				continue;
+			}
+			Face face = found.get().withEmbedding(faces.embed(img, found.get()));
+
+			// Embeddings from separate calls are directly comparable, so "is this still
+			// the same person" needs no state beyond one reference vector — no tracker,
+			// no frame-to-frame association.
+			if (reference == null) {
+				reference = face;
+			}
+			identity.add(reference.similarity(face));
+		}
+	}
+}
+
+// Judge a clip on the distribution, not on the worst frame. This one is a head turning
+// through full profile, and at profile SFace sees one eye and no mouth corners: the
+// cosine against a frontal reference falls to roughly zero on ~10% of frames while the
+// detector is still reporting 0.8. Per-frame thresholding would call that a stranger.
+Collections.sort(identity);
+System.out.printf("a face in %d frames -- identity median %.3f, p10 %.3f, worst %.3f%n",
+	identity.size(), identity.get(identity.size() / 2),
+	identity.get(identity.size() / 10), identity.get(0));
+```
+
+video4j hands out an OpenCV `Mat` and this module keeps OpenCV off its compile path — the
+dependency is **test scope**, and `FaceImage` is a plain byte array precisely so an application
+already holding OpenCV 4.x is not forced onto video4j's 5.x. The whole bridge:
+
+```java
+/** OpenCV {@code CV_8UC3} is BGR, row-major, stride {@code width * 3} — FaceImage's layout. */
+private static FaceImage toFaceImage(Mat mat) {
+	byte[] bgr = new byte[mat.rows() * mat.cols() * 3];
+	int copied = mat.get(0, 0, bgr);
+	// A non-continuous or non-8UC3 Mat copies short and leaves the tail zeroed, which detects
+	// as a plausible-looking nothing rather than as an error. Cheap to rule out here.
+	if (copied != bgr.length) {
+		throw new IllegalArgumentException("copied " + copied + " of " + bgr.length
+			+ " bytes -- Mat is not continuous CV_8UC3");
+	}
+	return FaceImage.ofBgrBytes(mat.cols(), mat.rows(), bgr);
+}
+```
+
+Two things that example is showing on purpose. Frames are closed — video4j allocates a `Mat` per
+frame and native memory is invisible to the garbage collector, so a long clip without the
+try-with-resources grows until the OS intervenes. And there is no resize step: the detector caps
+the long edge itself, so adding one only costs a second interpolation and moves the boxes.
+
 The types used above come from `facedetect4j-api` and are documented [there](../api).
 
 ## GPU is enforced, not preferred
@@ -100,23 +175,92 @@ Yunet4j.pipeline(dir, Device.cuda(1));   // second GPU
 
 ### Making CUDA load
 
-The Maven `onnxruntime_gpu` artifact is a **CUDA 12** build, even though onnxruntime.ai documents
-1.27+ as CUDA 13 — that table describes the PyPI and NuGet packages, not the Java one. Verified:
+ONNX Runtime 1.28 ships **two different native builds of the same version**, and Maven gets the
+older one:
 
 ```
-$ readelf -d libonnxruntime_providers_cuda.so | grep NEEDED
-  libcudart.so.12   libcublas.so.12   libcublasLt.so.12   libcurand.so.10
+$ readelf -d libonnxruntime_providers_cuda.so | grep -o 'libcud.*so\.[0-9]*'
+  Maven  onnxruntime_gpu:1.28.0 : libcudart.so.12  libcublas.so.12  libcublasLt.so.12
+  PyPI   onnxruntime-gpu 1.28.0 : libcudart.so.13  libcublas.so.13  libcublasLt.so.13
 ```
 
-No `libcudnn` soname appears anywhere, so **cuDNN is not required**. On a host with only CUDA 13
-(Debian trixie), supply CUDA 12 from pip wheels and export the path **before the JVM starts** — the
-dynamic loader fixes its search path at process start, so setting it from inside Java is too late:
+onnxruntime.ai's "1.27+ is CUDA 13" table describes the PyPI and NuGet packages, not the Java one.
+So on a CUDA 13 host the Maven jar cannot load its provider, and the error names no library at all:
+
+```
+OrtSessionOptionsAppendExecutionProvider_Cuda: Failed to load shared library
+```
+
+Worse if some *other* package left an old CUDA 12 behind — Debian ships 12.4 as `libcudart12`,
+which many things pull in. Then the provider gets far enough to bind symbols and fails naming a
+function nobody has heard of, with no hint that the version is the problem:
+
+```
+libonnxruntime_providers_cuda.so: undefined symbol: cudaLibraryGetKernel, version libcudart.so.12
+```
+
+**You do not need to install CUDA 12 for this.** `setup-cuda.sh` detects what the machine has:
+
+| System has | What happens | Downloaded |
+|---|---|---|
+| CUDA 13 | uses it, with ORT's CUDA 13 natives from the PyPI wheel | ORT natives + cuDNN, ~1.1 GB |
+| CUDA 12 | uses it as-is with the stock Maven build | cuDNN only, if missing |
+| neither | fetches a project-local CUDA 12 | ~2.3 GB |
 
 ```bash
-python3 -m venv .venv-cuda
-.venv-cuda/bin/pip install nvidia-cuda-runtime-cu12 nvidia-cublas-cu12 nvidia-curand-cu12
-export LD_LIBRARY_PATH="$(ls -d .venv-cuda/lib/python*/site-packages/nvidia/*/lib | paste -sd:)"
+./setup-cuda.sh
+mvn test
 ```
+
+**Nothing to source, no variables to export.** The script only puts files under `.cuda/`;
+`CudaNatives` finds them from inside the JVM, before any ONNX Runtime class initialises. That
+matters because otherwise every launcher has to be taught the same environment — shell, IDE run
+configuration, surefire fork, and any downstream application. `FORCE_CUDA12=1` opts back into the
+stock Maven build.
+
+Two things have to happen, and neither needs the loader's search path:
+
+- **`onnxruntime.native.path`** is a system property, so it can simply be set — as long as it is set
+  first. ONNX Runtime reads it once, in its own class initialiser.
+- **cuDNN** is `dlopen`'d by name from a directory the loader does not search. `System.load` on the
+  absolute path registers the library under its `SONAME`, so ORT's later `dlopen` finds it already
+  resident and never consults the search path at all. Load order is not computed — cuDNN 9 is a
+  dozen interdependent libraries — the loads are just retried to a fixpoint.
+
+If this library is a **dependency** rather than the build you are running, the search from the
+working directory upward will not reach into this checkout. Install once for the machine with
+`./setup-cuda.sh --global` (`~/.facedetect4j/cuda`), or point at any directory with
+`-Dfacedetect4j.cuda.dir=`.
+
+⚠️ The CUDA 13 path is an **unsupported combination**: the core and provider libraries come from
+the PyPI wheel while `libonnxruntime4j_jni.so` still comes from the Maven jar, because the wheel
+has no Java shim. It works because both are ORT 1.28.0 and the wheel's core carries the SONAME
+(`libonnxruntime.so.1`) the shim links against — so **the two versions must be kept equal**. Bump
+`ORT_VERSION` in the script together with `ort.version` in the parent pom.
+
+#### With root
+
+CUDA itself is better installed from NVIDIA's packages — the debs drop an `/etc/ld.so.conf.d`
+entry, so after `ldconfig` those libraries are on the default loader path and `setup-cuda.sh`
+detects and uses them instead of downloading a second copy. For CUDA **12** you need the
+**`debian12`** repo; `debian13` starts at CUDA 13.1.
+
+cuDNN cannot be installed this way on Debian: `compute/cudnn/repos` has no Debian tree (both
+`debian12` and `debian13` are 404), and the `debian13` CUDA repo carries zero cuDNN packages. The
+tarball this script fetches is the only route.
+
+#### cuDNN is required and invisible
+
+It does not appear in the `NEEDED` list above, because ORT `dlopen`s `libcudnn.so` lazily at the
+first Conv node. Absence from `NEEDED` means "not linked at load time", not "not required" — the
+session opens fine and inference then fails with:
+
+```
+ORT_NOT_IMPLEMENTED ... cuDNN is unavailable or disabled for CUDA Execution Provider
+```
+
+Without a working GPU the tests **skip** rather than fail, so a green build is not evidence the GPU
+path works — check for `Skipped: 0`.
 
 ## Models
 
@@ -169,6 +313,19 @@ confusingly.
 is anatomical (subject's right = image left), and ArcFace slot 0 is simply the image-left point. Both
 land on the same array order. Permuting them "to fix the naming" yields a mirrored crop that still
 embeds cleanly and merely scores worse.
+
+**Do not threshold identity per frame in video.** Measured over the 887 frames of the rotation clip
+in the example, against a frontal reference:
+
+```
+median +0.892     p25 +0.638     p10 +0.260     worst -0.092
+```
+
+The worst frames are not detection failures — the detector still reports 0.63-0.84 there. At full
+profile SFace sees one eye and no mouth corners, so the embedding is close to orthogonal to a
+frontal one, and roughly one frame in ten of a turning head falls below the 0.3 band that
+distinguishes *different people*. A per-frame threshold calls that a stranger. Aggregate first:
+take the best-of-N over a window, or gate on pose before embedding at all.
 
 ## Validation
 

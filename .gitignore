@@ -16,3 +16,7 @@ target/
 
 # Errors
 hs_err*
+
+# CUDA runtime fetched by yunet/setup-cuda.sh (NVIDIA redistributables, not ours to commit)
+/yunet/.cuda
+/yunet/.cuda-env

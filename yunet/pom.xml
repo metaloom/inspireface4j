@@ -39,5 +39,16 @@
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
+        <!--
+          Test scope only, and it must stay that way. video4j brings OpenCV 5.1 FFM natives with
+          it; keeping them out of the compile scope is what lets an application already holding
+          OpenCV 4.x use this module. FaceImage is a plain byte array precisely so that boundary
+          stays optional - see the video example for the four lines that cross it.
+        -->
+        <dependency>
+            <groupId>io.metaloom.video</groupId>
+            <artifactId>video4j</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
