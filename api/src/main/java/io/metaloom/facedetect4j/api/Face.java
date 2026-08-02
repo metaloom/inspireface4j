@@ -29,6 +29,17 @@ public record Face(BoundingBox box, float score, Landmarks landmarks, float[] em
 	}
 
 	/**
+	 * Head orientation, when the detector supplied keypoints. Empty otherwise — several backends
+	 * return no landmarks at all, so this is an {@link Optional} rather than a silent zero pose,
+	 * which would read as "perfectly frontal" and pass every gate.
+	 *
+	 * @see Landmarks#estimatePose() for what is exact here and what is estimated
+	 */
+	public Optional<FacePose> estimatePose() {
+		return optionalLandmarks().map(Landmarks::estimatePose);
+	}
+
+	/**
 	 * Cosine similarity against another face's embedding, in [-1, 1].
 	 *
 	 * <p>

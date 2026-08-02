@@ -21,12 +21,13 @@ of call sites.
 | `FaceEmbedder` | `embed(FaceImage, Face)` and `embed(AlignedFace)` |
 | `FacePipeline` | both, plus `detectAndEmbed`, `primaryFace`, `align` |
 | `Face` | box, score, landmarks and (optionally) the embedding |
+| `FacePose` | roll / yaw / pitch in degrees, plus `isFrontal(maxDegrees)` |
 | `BoundingBox`, `Landmarks`, `AlignedFace` | value types |
 | `FaceImage` | BGR pixels; `read(Path)`, or `ofBgrBytes(w, h, byte[])` to skip AWT |
 | `Device` | `cpu()`, `cuda()`, `cuda(int)` |
 | `align.ArcFaceAlign` | the canonical 5-point 112x112 warp |
 
-## Three decisions worth knowing
+## Four decisions worth knowing
 
 **`detect()` returns every face**, unsorted and uncapped. Choosing a primary face is caller policy —
 `FacePipeline.primaryFace` implements the usual largest-and-most-central rule — and baking that into
@@ -41,6 +42,14 @@ same constants insightface and OpenCV's `FaceRecognizerSF::alignCrop` use, byte 
 backend that produces 5 landmarks shares it rather than reimplementing it, because a subtly
 different template yields crops that still embed cleanly and merely score worse, which is close to
 undetectable without a reference to compare against.
+
+**`FacePose.isFrontal()` ignores roll**, and the asymmetry is the point. Roll is in-plane, so
+alignment rotates it away for free and a rolled face embeds exactly as well as an upright one. Yaw
+and pitch rotate half the face out of view, and no 2D warp brings it back — so they, and not the
+detection score, are what predicts whether an embedding is worth comparing. `Face.estimatePose()`
+is an `Optional` because several backends return no landmarks at all; a zero pose would read as
+"perfectly frontal" and pass every gate. `Landmarks.estimatePose()` documents which of the three
+angles is exact and which two are estimated, and why.
 
 ## The test-jar
 

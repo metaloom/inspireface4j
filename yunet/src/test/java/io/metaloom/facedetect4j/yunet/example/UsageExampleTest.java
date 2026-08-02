@@ -20,10 +20,13 @@ import io.metaloom.facedetect4j.api.Device;
 import io.metaloom.facedetect4j.api.Face;
 import io.metaloom.facedetect4j.api.FaceImage;
 import io.metaloom.facedetect4j.api.FacePipeline;
+import io.metaloom.facedetect4j.api.FacePose;
+import io.metaloom.facedetect4j.api.Landmarks;
 import io.metaloom.facedetect4j.api.TestData;
 import io.metaloom.facedetect4j.yunet.GpuProbe;
 import io.metaloom.facedetect4j.yunet.Yunet4j;
 import io.metaloom.opencv.core.Mat;
+import io.metaloom.opencv.core.Point;
 import io.metaloom.opencv.core.Scalar;
 import io.metaloom.video4j.Video4j;
 import io.metaloom.video4j.VideoFile;
@@ -126,8 +129,12 @@ public class UsageExampleTest {
 		Video4j.init();
 		SimpleImageViewer viewer = new SimpleImageViewer();
 
+		Scalar GREEN = new Scalar(0, 255, 0), CYAN = new Scalar(255, 255, 0),
+			YELLOW = new Scalar(0, 255, 255);
+
 		Face reference = null;
 		List<Double> identity = new ArrayList<>();
+		List<Double> frontal = new ArrayList<>();
 
 		try (FacePipeline faces = Yunet4j.pipeline(Path.of("models"));
 			VideoFile video = VideoFile.open(clip)) {
@@ -148,13 +155,27 @@ public class UsageExampleTest {
 					List<Face> detections = faces.detect(img);
 
 					// Print the detections, and draw them onto the frame the viewer shows.
-					// Drawing after the conversion above, so the boxes never reach the model.
+					// Drawing after the conversion above, so none of it reaches the model.
 					for (Face detection : detections) {
 						BoundingBox box = detection.box();
+						FacePose pose = detection.estimatePose().orElseThrow();
 						System.out.println("Frame[" + video.currentFrame() + "] = "
-							+ detection.score() + " @ " + box);
+							+ detection.score() + " @ " + box + "  [" + pose + "]");
+
 						CVUtils.drawRect(frame.mat(), (int) box.x1(), (int) box.y1(),
-							(int) box.width(), (int) box.height(), new Scalar(0, 255, 0));
+							(int) box.width(), (int) box.height(), GREEN);
+
+						// The five keypoints, in ArcFace order: 0/1 eyes, 2 nose, 3/4 mouth
+						// corners. Colouring the eyes apart from the rest makes a swapped order
+						// obvious at a glance — it is otherwise invisible, because the wrong
+						// order still produces a face-shaped crop that embeds without error.
+						Landmarks lm = detection.landmarks();
+						for (int i = 0; i < 5; i++) {
+							CVUtils.drawCircle(frame.mat(), (int) lm.x(i), (int) lm.y(i), 3,
+								i < 2 ? CYAN : YELLOW);
+						}
+						CVUtils.drawText(frame.mat(), pose.toString(),
+							new Point(box.x1(), box.y1() - 8), 0.5, GREEN, 1);
 					}
 
 					// The single face a portrait pipeline wants, embedded and compared against
@@ -167,7 +188,15 @@ public class UsageExampleTest {
 						if (reference == null) {
 							reference = face;
 						}
-						identity.add(reference.similarity(face));
+						double score = reference.similarity(face);
+						identity.add(score);
+
+						// Out-of-plane rotation is the thing an embedding cannot survive, and a
+						// detection score will not warn you: these frames still score 0.7-0.8.
+						// Roll is excluded deliberately — alignment rotates it away for free.
+						if (face.estimatePose().filter(p -> p.isFrontal(30)).isPresent()) {
+							frontal.add(score);
+						}
 					}
 
 					viewer.show(frame.mat());
@@ -175,19 +204,27 @@ public class UsageExampleTest {
 			}
 		}
 
-		// Judge a clip on the distribution, not on the worst frame. This one is a head turning
-		// through full profile, and at profile SFace sees one eye and no mouth corners: the
-		// cosine against a frontal reference falls to roughly zero on ~10% of frames while the
-		// detector is still reporting 0.8. Per-frame thresholding would call that a stranger.
+		// What the gate is worth. Ungated, this clip's worst frame scores below zero against the
+		// same person - at full profile SFace sees one eye and no mouth corners, while the
+		// detector is still reporting 0.7-0.8. Keeping only the frames that are frontal enough
+		// throws away a third of them and removes every one of those.
 		Collections.sort(identity);
-		System.out.printf("a face in %d frames -- identity median %.3f, p10 %.3f, worst %.3f%n",
-			identity.size(), identity.get(identity.size() / 2),
-			identity.get(identity.size() / 10), identity.get(0));
+		Collections.sort(frontal);
+		System.out.printf("all %d frames    : median %.3f, worst %.3f%n",
+			identity.size(), identity.get(identity.size() / 2), identity.get(0));
+		System.out.printf("frontal-only %3d : median %.3f, worst %.3f%n",
+			frontal.size(), frontal.get(frontal.size() / 2), frontal.get(0));
 		// SNIPPET END video-usage.example
 
 		assertThat(identity).as("frames with a detected face").hasSizeGreaterThan(50);
 		assertThat(identity.get(identity.size() / 2)).as("median same-identity score")
 			.isGreaterThan(0.6);
+		// The point of the pose gate, as a regression test rather than a claim: ungated this is
+		// negative. If an estimator change lets a profile frame through, this is what catches it.
+		assertThat(frontal).as("frames passing the 30 degree gate")
+			.hasSizeGreaterThan(identity.size() / 2);
+		assertThat(frontal.get(0)).as("worst identity surviving the pose gate")
+			.isGreaterThan(0.5);
 	}
 
 	// SNIPPET START video-usage.bridge

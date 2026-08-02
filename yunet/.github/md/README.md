@@ -49,8 +49,8 @@ Feeding pixels from an existing decoder skips AWT entirely:
 FaceImage img = FaceImage.ofBgrBytes(width, height, bgrBytes);
 ```
 
-Video, via [video4j](https://github.com/metaloom/video4j) — detections printed and drawn onto the
-frame, in a viewer window:
+Video, via [video4j](https://github.com/metaloom/video4j) — boxes, the five keypoints and the head
+pose drawn onto the frame, in a viewer window:
 
 ```java
 %{snippet|id=video-usage.example|file=src/test/java/io/metaloom/facedetect4j/yunet/example/UsageExampleTest.java}
@@ -74,6 +74,51 @@ Three things that example is doing on purpose:
   interpolation and moves the boxes.
 - **Boxes are drawn after the conversion**, onto the `Mat` the viewer shows. Draw first and the
   rectangles are part of the pixels the model sees.
+- **The eyes are drawn in a different colour from the rest.** Keypoint order is the interop
+  contract, not a naming convention, and a swapped order is otherwise invisible — the wrong order
+  still produces a face-shaped crop that embeds without error and merely scores worse.
+
+### Markers and orientation
+
+YuNet returns the five ArcFace keypoints with every detection, so `face.landmarks()` is always
+populated here (several other backends return `null` — check `optionalLandmarks()` if you write
+against the interface rather than against yunet). Order is `0/1` eyes, `2` nose, `3/4` mouth
+corners; `Landmarks.geometryLooksSane()` is a cheap assertion when wiring up a new detector.
+
+Head orientation comes from those five points:
+
+```java
+FacePose pose = face.estimatePose().orElseThrow();   // roll / yaw / pitch, degrees
+if (pose.isFrontal(30)) { ... }
+```
+
+**Roll is exact** — it is the angle of the line between the eyes and assumes nothing. Yaw and pitch
+are estimates, from two measurements that fail in opposite places:
+
+- The **nose swinging off the eye-to-mouth axis** is sensitive near frontal. It collapses at
+  profile: once the far eye is occluded the detector stacks it onto the near one, so the "eye
+  midpoint" is no longer the midline and the offset against it means nothing. On the rotation clip
+  this alone reported a **17°** turn on a frame that was in full profile.
+- The **interocular distance foreshortening** against the eye-to-mouth distance is the reverse.
+  That same frame's eyes had closed to 0.31 of their frontal separation — a **72°** turn,
+  unmistakable — but near frontal it is noise, since `acos` is vertical at 1.
+
+`estimatePose()` takes the larger magnitude and the nose's sign. Each under-reports where it is
+weak and neither over-reports, so the maximum cannot be fooled into calling a turned face frontal,
+which is the direction a gate has to fail in. Measured on the clip, switching from nose-only to the
+pair moved `pearson(|yaw|, identity)` from **-0.791 to -0.913**, and the worst identity surviving a
+20° gate from **-0.08 to +0.75**.
+
+`isFrontal()` ignores roll on purpose: roll is in-plane, so alignment rotates it away for free and a
+rolled face embeds exactly as well as an upright one. Yaw and pitch rotate half the face out of
+view and no 2D warp brings it back.
+
+The degrees themselves are approximate — the nose branch divides by an assumed average nose
+protrusion, and pitch has no second measurement to cross-check it, so a given face carries a
+constant offset (the reference frame of the clip reads `pitch -14` while looking straight at the
+camera). Treat the ordering as sound and the absolute value as within roughly ten degrees. For
+measured angles, use a detector with a pose head — InspireFace has one — or `solvePnP` against a 3D
+face model with real camera intrinsics.
 
 The types used above come from `facedetect4j-api` and are documented [there](../api).
 
@@ -230,18 +275,21 @@ is anatomical (subject's right = image left), and ArcFace slot 0 is simply the i
 land on the same array order. Permuting them "to fix the naming" yields a mirrored crop that still
 embeds cleanly and merely scores worse.
 
-**Do not threshold identity per frame in video.** Measured over the 887 frames of the rotation clip
-in the example, against a frontal reference:
+**Do not threshold identity per frame in video — gate on pose instead.** Measured over the 884
+frames of the rotation clip in the example, against a frontal reference:
 
 ```
-median +0.892     p25 +0.638     p10 +0.260     worst -0.092
+all 884 frames    median +0.895   worst -0.100
+frontal-only 586  median +0.909   worst +0.699     <- FacePose.isFrontal(30)
 ```
 
-The worst frames are not detection failures — the detector still reports 0.63-0.84 there. At full
-profile SFace sees one eye and no mouth corners, so the embedding is close to orthogonal to a
-frontal one, and roughly one frame in ten of a turning head falls below the 0.3 band that
-distinguishes *different people*. A per-frame threshold calls that a stranger. Aggregate first:
-take the best-of-N over a window, or gate on pose before embedding at all.
+The bad frames are not detection failures: the detector still reports 0.70-0.82 on them. At full
+profile SFace sees one eye and no mouth corners, so the embedding goes near-orthogonal to the same
+person's frontal one — below the 0.3 band that distinguishes *different people*. A per-frame
+similarity threshold calls that a stranger.
+
+`isFrontal(30)` costs a third of the frames and removes every one of them. Correlation between
+`|yaw|` and identity over the clip is **-0.913**.
 
 ## Validation
 

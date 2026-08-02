@@ -84,15 +84,19 @@ Feeding pixels from an existing decoder skips AWT entirely:
 FaceImage img = FaceImage.ofBgrBytes(width, height, bgrBytes);
 ```
 
-Video, via [video4j](https://github.com/metaloom/video4j) — detections printed and drawn onto the
-frame, in a viewer window:
+Video, via [video4j](https://github.com/metaloom/video4j) — boxes, the five keypoints and the head
+pose drawn onto the frame, in a viewer window:
 
 ```java
 Video4j.init();
 SimpleImageViewer viewer = new SimpleImageViewer();
 
+Scalar GREEN = new Scalar(0, 255, 0), CYAN = new Scalar(255, 255, 0),
+	YELLOW = new Scalar(0, 255, 255);
+
 Face reference = null;
 List<Double> identity = new ArrayList<>();
+List<Double> frontal = new ArrayList<>();
 
 try (FacePipeline faces = Yunet4j.pipeline(Path.of("models"));
 	VideoFile video = VideoFile.open(clip)) {
@@ -113,13 +117,27 @@ try (FacePipeline faces = Yunet4j.pipeline(Path.of("models"));
 			List<Face> detections = faces.detect(img);
 
 			// Print the detections, and draw them onto the frame the viewer shows.
-			// Drawing after the conversion above, so the boxes never reach the model.
+			// Drawing after the conversion above, so none of it reaches the model.
 			for (Face detection : detections) {
 				BoundingBox box = detection.box();
+				FacePose pose = detection.estimatePose().orElseThrow();
 				System.out.println("Frame[" + video.currentFrame() + "] = "
-					+ detection.score() + " @ " + box);
+					+ detection.score() + " @ " + box + "  [" + pose + "]");
+
 				CVUtils.drawRect(frame.mat(), (int) box.x1(), (int) box.y1(),
-					(int) box.width(), (int) box.height(), new Scalar(0, 255, 0));
+					(int) box.width(), (int) box.height(), GREEN);
+
+				// The five keypoints, in ArcFace order: 0/1 eyes, 2 nose, 3/4 mouth
+				// corners. Colouring the eyes apart from the rest makes a swapped order
+				// obvious at a glance — it is otherwise invisible, because the wrong
+				// order still produces a face-shaped crop that embeds without error.
+				Landmarks lm = detection.landmarks();
+				for (int i = 0; i < 5; i++) {
+					CVUtils.drawCircle(frame.mat(), (int) lm.x(i), (int) lm.y(i), 3,
+						i < 2 ? CYAN : YELLOW);
+				}
+				CVUtils.drawText(frame.mat(), pose.toString(),
+					new Point(box.x1(), box.y1() - 8), 0.5, GREEN, 1);
 			}
 
 			// The single face a portrait pipeline wants, embedded and compared against
@@ -132,7 +150,15 @@ try (FacePipeline faces = Yunet4j.pipeline(Path.of("models"));
 				if (reference == null) {
 					reference = face;
 				}
-				identity.add(reference.similarity(face));
+				double score = reference.similarity(face);
+				identity.add(score);
+
+				// Out-of-plane rotation is the thing an embedding cannot survive, and a
+				// detection score will not warn you: these frames still score 0.7-0.8.
+				// Roll is excluded deliberately — alignment rotates it away for free.
+				if (face.estimatePose().filter(p -> p.isFrontal(30)).isPresent()) {
+					frontal.add(score);
+				}
 			}
 
 			viewer.show(frame.mat());
@@ -140,14 +166,16 @@ try (FacePipeline faces = Yunet4j.pipeline(Path.of("models"));
 	}
 }
 
-// Judge a clip on the distribution, not on the worst frame. This one is a head turning
-// through full profile, and at profile SFace sees one eye and no mouth corners: the
-// cosine against a frontal reference falls to roughly zero on ~10% of frames while the
-// detector is still reporting 0.8. Per-frame thresholding would call that a stranger.
+// What the gate is worth. Ungated, this clip's worst frame scores below zero against the
+// same person - at full profile SFace sees one eye and no mouth corners, while the
+// detector is still reporting 0.7-0.8. Keeping only the frames that are frontal enough
+// throws away a third of them and removes every one of those.
 Collections.sort(identity);
-System.out.printf("a face in %d frames -- identity median %.3f, p10 %.3f, worst %.3f%n",
-	identity.size(), identity.get(identity.size() / 2),
-	identity.get(identity.size() / 10), identity.get(0));
+Collections.sort(frontal);
+System.out.printf("all %d frames    : median %.3f, worst %.3f%n",
+	identity.size(), identity.get(identity.size() / 2), identity.get(0));
+System.out.printf("frontal-only %3d : median %.3f, worst %.3f%n",
+	frontal.size(), frontal.get(frontal.size() / 2), frontal.get(0));
 ```
 
 video4j hands out an OpenCV `Mat` and this module keeps OpenCV off its compile path — the
@@ -179,6 +207,51 @@ Three things that example is doing on purpose:
   interpolation and moves the boxes.
 - **Boxes are drawn after the conversion**, onto the `Mat` the viewer shows. Draw first and the
   rectangles are part of the pixels the model sees.
+- **The eyes are drawn in a different colour from the rest.** Keypoint order is the interop
+  contract, not a naming convention, and a swapped order is otherwise invisible — the wrong order
+  still produces a face-shaped crop that embeds without error and merely scores worse.
+
+### Markers and orientation
+
+YuNet returns the five ArcFace keypoints with every detection, so `face.landmarks()` is always
+populated here (several other backends return `null` — check `optionalLandmarks()` if you write
+against the interface rather than against yunet). Order is `0/1` eyes, `2` nose, `3/4` mouth
+corners; `Landmarks.geometryLooksSane()` is a cheap assertion when wiring up a new detector.
+
+Head orientation comes from those five points:
+
+```java
+FacePose pose = face.estimatePose().orElseThrow();   // roll / yaw / pitch, degrees
+if (pose.isFrontal(30)) { ... }
+```
+
+**Roll is exact** — it is the angle of the line between the eyes and assumes nothing. Yaw and pitch
+are estimates, from two measurements that fail in opposite places:
+
+- The **nose swinging off the eye-to-mouth axis** is sensitive near frontal. It collapses at
+  profile: once the far eye is occluded the detector stacks it onto the near one, so the "eye
+  midpoint" is no longer the midline and the offset against it means nothing. On the rotation clip
+  this alone reported a **17°** turn on a frame that was in full profile.
+- The **interocular distance foreshortening** against the eye-to-mouth distance is the reverse.
+  That same frame's eyes had closed to 0.31 of their frontal separation — a **72°** turn,
+  unmistakable — but near frontal it is noise, since `acos` is vertical at 1.
+
+`estimatePose()` takes the larger magnitude and the nose's sign. Each under-reports where it is
+weak and neither over-reports, so the maximum cannot be fooled into calling a turned face frontal,
+which is the direction a gate has to fail in. Measured on the clip, switching from nose-only to the
+pair moved `pearson(|yaw|, identity)` from **-0.791 to -0.913**, and the worst identity surviving a
+20° gate from **-0.08 to +0.75**.
+
+`isFrontal()` ignores roll on purpose: roll is in-plane, so alignment rotates it away for free and a
+rolled face embeds exactly as well as an upright one. Yaw and pitch rotate half the face out of
+view and no 2D warp brings it back.
+
+The degrees themselves are approximate — the nose branch divides by an assumed average nose
+protrusion, and pitch has no second measurement to cross-check it, so a given face carries a
+constant offset (the reference frame of the clip reads `pitch -14` while looking straight at the
+camera). Treat the ordering as sound and the absolute value as within roughly ten degrees. For
+measured angles, use a detector with a pose head — InspireFace has one — or `solvePnP` against a 3D
+face model with real camera intrinsics.
 
 The types used above come from `facedetect4j-api` and are documented [there](../api).
 
@@ -335,18 +408,21 @@ is anatomical (subject's right = image left), and ArcFace slot 0 is simply the i
 land on the same array order. Permuting them "to fix the naming" yields a mirrored crop that still
 embeds cleanly and merely scores worse.
 
-**Do not threshold identity per frame in video.** Measured over the 887 frames of the rotation clip
-in the example, against a frontal reference:
+**Do not threshold identity per frame in video — gate on pose instead.** Measured over the 884
+frames of the rotation clip in the example, against a frontal reference:
 
 ```
-median +0.892     p25 +0.638     p10 +0.260     worst -0.092
+all 884 frames    median +0.895   worst -0.100
+frontal-only 586  median +0.909   worst +0.699     <- FacePose.isFrontal(30)
 ```
 
-The worst frames are not detection failures — the detector still reports 0.63-0.84 there. At full
-profile SFace sees one eye and no mouth corners, so the embedding is close to orthogonal to a
-frontal one, and roughly one frame in ten of a turning head falls below the 0.3 band that
-distinguishes *different people*. A per-frame threshold calls that a stranger. Aggregate first:
-take the best-of-N over a window, or gate on pose before embedding at all.
+The bad frames are not detection failures: the detector still reports 0.70-0.82 on them. At full
+profile SFace sees one eye and no mouth corners, so the embedding goes near-orthogonal to the same
+person's frontal one — below the 0.3 band that distinguishes *different people*. A per-frame
+similarity threshold calls that a stranger.
+
+`isFrontal(30)` costs a third of the frames and removes every one of them. Correlation between
+`|yaw|` and identity over the clip is **-0.913**.
 
 ## Validation
 
