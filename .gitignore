@@ -1,26 +1,18 @@
 # Maven / Eclipse
+target/
 .classpath
 .settings
 .project
 .vscode
-/target
 
-# Library
-/insightface*
-/InspireFace*
-/inspireface*
-/TensorRT*
+# Model weights are fetched, never committed (see the module READMEs)
+/yunet/models
+/inspireface/packs
+/jdlib/examples/*.dat
+/jdlib/examples/*.bz2
 
-# Models
-/packs
-
-# Aritfacts
-jinspirelib/build
-jinspirelib/*.jpg
+# Native build tree (jdlib/jni is the source, jdlib/build is cmake output)
+/jdlib/build
 
 # Errors
 hs_err*
-
-# Artifacts
-/src/main/resources/native/linux/libjinspire*
-/inspireface-linux*

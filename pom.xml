@@ -2,25 +2,29 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>io.metaloom.inspireface4j</groupId>
-    <artifactId>inspireface4j</artifactId>
+
+    <groupId>io.metaloom.facedetect4j</groupId>
+    <artifactId>facedetect4j-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
 
     <parent>
         <groupId>io.metaloom</groupId>
         <artifactId>maven-parent</artifactId>
         <version>3.0.0-SNAPSHOT</version>
     </parent>
-    
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <video4j.version>2.0.0-SNAPSHOT</video4j.version>
-    </properties>
 
-    <name>inspireface4j</name>
-    <url>https://github.com/metaloom/inspireface4j</url>
-    <description>A java library for native Insightface face detection</description>
-    <inceptionYear>2025</inceptionYear>
+    <modules>
+        <module>api</module>
+        <module>yunet</module>
+        <module>inspireface</module>
+        <module>jdlib</module>
+    </modules>
+
+    <name>facedetect4j-parent</name>
+    <url>https://github.com/metaloom/facedetect4j</url>
+    <description>A Java library for face detection and face embedding extraction</description>
+    <inceptionYear>2026</inceptionYear>
 
     <developers>
         <developer>
@@ -43,25 +47,81 @@
         </license>
     </licenses>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <video4j.version>2.0.0-SNAPSHOT</video4j.version>
+        <!--
+          onnxruntime_gpu, not onnxruntime: the CPU artifact contains no CUDA execution provider,
+          so Device.cuda() could never be satisfied with it. The Maven artifact is a CUDA 12 build
+          and needs no cuDNN - see the yunet README.
+        -->
+        <onnxruntime.version>1.28.0</onnxruntime.version>
+        <assertj.version>3.27.3</assertj.version>
+        <snippet-filter.version>0.1.1</snippet-filter.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.metaloom.facedetect4j</groupId>
+                <artifactId>facedetect4j-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!-- Carries TestData, the locator for the shared testdata/ media. -->
+            <dependency>
+                <groupId>io.metaloom.facedetect4j</groupId>
+                <artifactId>facedetect4j-api</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.metaloom.facedetect4j</groupId>
+                <artifactId>facedetect4j-yunet</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.metaloom.facedetect4j</groupId>
+                <artifactId>facedetect4j-inspireface</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.metaloom.facedetect4j</groupId>
+                <artifactId>facedetect4j-jdlib</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.microsoft.onnxruntime</groupId>
+                <artifactId>onnxruntime_gpu</artifactId>
+                <version>${onnxruntime.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.metaloom.video</groupId>
+                <artifactId>video4j</artifactId>
+                <version>${video4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>2.11.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <!-- Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.metaloom.video</groupId>
-            <artifactId>video4j</artifactId>
-            <version>${video4j.version}</version>
-        </dependency>
 
-        <!--Test-->
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>2.11.0</version>
-            <scope>test</scope>
-        </dependency>
+        <!-- Test -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
@@ -72,31 +132,41 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        <!--
+          Reactor-wide because AbstractFacePipelineTest (shipped in the api test-jar) asserts with
+          it, so every module running the shared conformance suite needs it on the test classpath.
+        -->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
-        <resources>
-            <resource>
-                <directory>${basedir}/src/main/resources/</directory>
-                <includes>
-                    <include>**/*</include>
-                </includes>
-            </resource>
-        </resources>
-
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
+                <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <release>25</release>
+                    <!--
+                      Both backends reach native code: inspireface via FFM downcalls, yunet via
+                      the ONNX Runtime JNI library. Without this the JVM prints a warning today
+                      and will refuse the call in a later release.
+                    -->
+                    <argLine>--enable-native-access=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
 
+            <!--
+              README generation. Each module keeps its source of truth in .github/md/README.md and
+              the rendered README.md at its root is generated during `clean` - never edit the
+              generated file. The snippet filter inlines code from the tests, so the examples in
+              the README cannot drift away from code that actually compiles.
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <inherited>false</inherited>
                 <executions>
                     <execution>
                         <id>readme-md</id>
@@ -126,11 +196,10 @@
                     <dependency>
                         <groupId>io.metaloom.maven</groupId>
                         <artifactId>snippet-resource-filter</artifactId>
-                        <version>0.1.1</version>
+                        <version>${snippet-filter.version}</version>
                     </dependency>
                 </dependencies>
             </plugin>
-
         </plugins>
     </build>
 </project>

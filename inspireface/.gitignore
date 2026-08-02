@@ -1,0 +1,26 @@
+# Maven / Eclipse
+.classpath
+.settings
+.project
+.vscode
+/target
+
+# Library
+/insightface*
+/InspireFace*
+/inspireface*
+/TensorRT*
+
+# Models
+/packs
+
+# Aritfacts
+jinspirelib/build
+jinspirelib/*.jpg
+
+# Errors
+hs_err*
+
+# Artifacts
+/src/main/resources/native/linux/libjinspire*
+/inspireface-linux*

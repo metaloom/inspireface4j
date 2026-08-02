@@ -1,213 +1,121 @@
-# InspireFace4J
+# Facedetect4J
 
-InspireFace4J provides a Java-Native binding using FFM to the [InspireFace](https://github.com/HyperInspire/InspireFace) face detection library.
+Facedetect4J provides face **detection** (bounding box, landmarks) and face **embedding extraction**
+for Java, behind one backend neutral API.
 
-Supported features:
+Three backends ship today:
 
-* Face detection (Boundingbox + Confidence)
-* Face attribute extraction
-* Face embedding extraction
-* Face landmark extraction
-* Face orientation angles (yaw, pitch, roll)
+| Module | Backend | Runs on | Model licence |
+|---|---|---|---|
+| [`yunet`](yunet) | YuNet + SFace via ONNX Runtime | **GPU** (CUDA) | 🟡 MIT + Apache-2.0 — commercial use granted |
+| [`inspireface`](inspireface) | [InspireFace](https://github.com/HyperInspire/InspireFace) via FFM | CPU (MNN) | 🔴 non-commercial only |
+| [`jdlib`](jdlib) | [dlib](http://dlib.net) via JNI | CPU, or GPU for the CNN detector | 🟡 depends on which models you load |
 
+The licence column is the reason this project exists. InspireFace and InsightFace publish excellent
+models whose weights their authors state are for academic use only, which makes them unusable in a
+shipped product regardless of how well they score. The `yunet` backend is measurably close and
+carries explicit commercial grants — see [its README](yunet) for the numbers.
 
-Video processing can be by using the libary in combination with [Video4j](https://github.com/metaloom/video4j).
+`jdlib` is the trap worth knowing about: dlib's own code is Boost licensed and permissive, but the
+68 point shape predictor everyone reaches for first is **not** licensed for commercial use, and
+every jdlib entry point except plain `detectFace` needs a shape predictor. The 5 point predictor is
+a drop-in replacement with no such restriction. Nothing in the API tells you which one you loaded —
+see [the jdlib README](jdlib).
 
-![VideoPlayer](.github/md/output.gif)
+## Modules
 
-## Limitations
+* **`api`** — `io.metaloom.facedetect4j.api`. Names no model, no inference runtime and no native
+  library, and depends on nothing but the JDK. This is what consuming code compiles against. Its
+  test-jar carries `AbstractFacePipelineTest`, the conformance suite every backend is run against,
+  and `TestData`, the locator for the shared media in [`testdata/`](testdata).
+* **`yunet`** — GPU detection and embedding on ONNX Runtime. Permissively licensed models.
+* **`inspireface`** — FFM binding to InspireFace. Also exposes attributes, 106 landmarks and Euler
+  angles, which the neutral API does not model.
+* **`jdlib`** — JNI binding to dlib. HOG and CNN (MMOD) detection, 5/68 point landmarks and 128-d
+  embeddings.
 
-Currently only AMD64 Linux is supported. Support for other platforms is not planned.
-CUDA support using TensorRT is currently not working.
+## One API, three backends
+
+All three implement `FacePipeline`, and all three are run against the same conformance suite from
+the `api` test-jar — which is what makes them interchangeable rather than merely similar. Where a
+backend cannot do something it **refuses**, and the suite asserts the refusal:
+
+| | `yunet` | `inspireface` | `jdlib` |
+|---|---|---|---|
+| `detect` | ✅ | ✅ | ✅ (no confidence — every score is 1.0) |
+| ArcFace landmarks | ✅ | ❌ 106-point mapping undocumented | ✅ only with the 68-point predictor |
+| `embed(image, face)` | ✅ | ✅ | ✅ |
+| `embed(AlignedFace)` | ✅ | ❌ no crop entry point | ❌ no crop entry point |
+| `align` | ✅ | ❌ | ✅ only with the 68-point predictor |
+| Device | **cuda** | cpu (MNN) | cpu |
+
+`supportsAlignedEmbed()` answers the ❌ rows without catching an exception. It matters more than it
+looks: a backend that can only embed from its own alignment cannot be compared like-for-like with
+one that accepts a shared crop, so a single ranking across both silently folds alignment quality
+into what reads as an embedding-quality result.
 
 ## Usage
 
 ```xml
 <dependency>
-  <groupId>io.metaloom.inspireface4j</groupId>
-  <artifactId>inspireface4j</artifactId>
+  <groupId>io.metaloom.facedetect4j</groupId>
+  <artifactId>facedetect4j-yunet</artifactId>
   <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
+The API module comes in transitively; depend on `facedetect4j-api` directly only where a module must
+compile against the interfaces without pulling in a backend.
+
+```java
+try (FacePipeline faces = Yunet4j.pipeline(Path.of("models"))) {
+    FaceImage img = FaceImage.read(Path.of("photo.jpg"));
+
+    for (Face face : faces.detectAndEmbed(img)) {
+        System.out.println(face.box() + " -> " + face.embedding().length + "d");
+    }
+}
+```
+
+Video processing can be done by using the library in combination with
+[Video4j](https://github.com/metaloom/video4j).
+
+## Building
+
+```bash
+# io.metaloom:maven-parent must be installed first
+mvn -f ../maven-parent/pom.xml -N install
+
+mvn clean install
+```
+
+`inspireface` and `jdlib` additionally need their native libraries built — see the module READMEs.
+The prebuilt `.so` files are committed, so a plain build works; only changes to the JNI/FFM glue
+require the native toolchain. Building only the permissive stack:
+
+```bash
+mvn clean install -pl api,yunet
+```
+
+## testdata/
+
+The media the tests run on lives once, at the reactor root, rather than once per module. The two
+videos alone are 43 MB, several backends want the same faces, and — the real reason — comparing
+backends is only meaningful on identical input, which per-module copies cannot guarantee for long.
+
+Reach it through `TestData` from the `api` test-jar; do not hardcode `../testdata`.
+
+## Documentation
+
+The `README.md` files in this repository are **generated** during the `clean` phase from
+`.github/md/README.md` in each module. Edit the template, not the generated file, and let the
+snippet filter inline the examples from the tests so they cannot drift from code that compiles.
+
 ## License
 
-The code of this project is "Apache License" but the license of the models may be different. Please 
-
-> The licensing of the open-source models employed by InspireFace adheres to the same requirements as InsightFace, specifying their use solely for academic purposes and explicitly prohibiting commercial applications.
-
-## Models
-
-```
-mkdir packs && cd packs
-wget https://github.com/HyperInspire/InspireFace/releases/download/v1.x/Pikachu
-wget https://github.com/HyperInspire/InspireFace/releases/download/v1.x/Megatron
-
-# Not supported (Missing TensorRT support)
-# wget https://github.com/HyperInspire/InspireFace/releases/download/v1.x/Megatron_TRT
-
-```
-
-## Examples
-
-Image Example
-```java
-String imagePath = "src/test/resources/pexels-olly-3812743_1k_lower.jpg";
-
-// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
-Video4j.init();
-
-try (InspirefaceSession session = InspirefaceLib.session(DEFAULT_PACK, 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE)) {
-
-	// Load the image and invoke the detection
-	BufferedImage img = ImageUtils.load(new File(imagePath));
-	Mat imageMat = MatProvider.mat(img, CvType.CV_8UC3);
-	CVUtils.bufferedImageToMat(img, imageMat);
-
-	// Invoke the detection
-	FaceDetections detections = session.detect(imageMat, true);
-
-	// Print the detections
-	for (Detection detection : detections) {
-		System.out.println(detection.box() + " @ " + String.format("%.4f", detection.conf()));
-	}
-	// Show the result and release the mat and the detection data
-	ImageUtils.show(imageMat);
-	MatProvider.released(imageMat);
-}
-```
-
-
-Video Example
-```java
-
-// Initialize video4j and InspirefaceLib (Video4j is used to handle OpenCV Mat)
-Video4j.init();
-SimpleImageViewer viewer = new SimpleImageViewer();
-
-try (InspirefaceSession session = InspirefaceLib.session("packs/Pikachu", 640, ENABLE_FACE_RECOGNITION, ENABLE_FACE_ATTRIBUTE,
-	ENABLE_FACE_POSE)) {
-
-	// Open the video using Video4j
-	try (VideoFile video = VideoFile.open("src/test/resources/8090198-hd_1366_720_25fps.mp4")) {
-		// Process each frame
-		VideoFrame frame;
-		while ((frame = video.frame()) != null) {
-			// System.out.println(frame);
-
-			// Optionally downscale the frame
-			CVUtils.resize(frame, 512);
-
-			// Run the detection on the mat reference
-			FaceDetections detections = session.detect(frame.mat(), true);
-
-			if (!detections.isEmpty()) {
-				// Extract the face embedding from the first face
-				session.embedding(frame.mat(), detections, 0);
-				// Extract the face attributes
-				session.attributes(frame.mat(), detections, true);
-
-				// Run landmark detection for each detected face
-				for (int i = 0; i < detections.size(); i++) {
-					session.landmarks(frame.mat(), detections, i, true);
-				}
-			}
-
-			// Print the detections
-			for (Detection detection : detections) {
-				double confidence = detection.conf();
-				BoundingBox box = detection.box();
-				System.out.println("Frame[" + video.currentFrame() + "] = " + confidence + " @ " + box);
-			}
-
-			viewer.show(frame.mat());
-		}
-	}
-}
-
-```
-
-
-## Build 
-
-### Requirements:
-
-- [InspireFace 1.2.3](https://github.com/HyperInspire/InspireFace)
-- [OpenCV 5.x](https://github.com/opencv/opencv) (the same build that [opencv-ffm](https://github.com/metaloom/opencv-ffm) is built against)
-- JDK 25 or newer
-- Maven
-- GCC 13 or newer
-- CMake 3.16+
-- Python 3 (used to clear the executable stack flag of the shipped `libInspireFace.so`)
-
-### Building native code
-
-```bash
-# Download and extract inspireface-linux-x86-ubuntu18-1.2.3.zip from https://github.com/HyperInspire/InspireFace/releases
-cd  inspireface4j
-wget https://github.com/HyperInspire/InspireFace/releases/download/v1.2.3/inspireface-linux-x86-ubuntu18-1.2.3.zip
-unp inspireface-linux-x86-ubuntu18-1.2.3.zip
-
-cd jinspirelib
-# The OpenCV 5 build directory (the one that contains OpenCVConfig.cmake).
-# Defaults to ../../opencv/build - pass it explicitly or via the OpenCV_DIR env var.
-./build.sh /path/to/opencv/build
-```
-
-The script builds `libjinspireface.so` into `src/main/resources/native/linux` and copies the
-matching `libInspireFace.so` next to it.
-
-A different InspireFace release can be selected via `INSPIREFACE_VERSION=1.2.x ./build.sh`.
-
-### Notes on the shipped InspireFace binary
-
-The upstream 1.2.3 Linux release is linked with an executable stack (`GNU_STACK` = `RWE`), which
-the JVM refuses to load:
-
-```
-UnsatisfiedLinkError: cannot enable executable stack as shared object requires
-```
-
-`build.sh` therefore runs `jinspirelib/clear-execstack.py` on the bundled copy of the library,
-which clears the flag (the equivalent of `execstack -c`).
-
-### Notes on OpenCV 5
-
-OpenCV 5 changed `CV_CN_SHIFT` from 3 to 5, so the numeric values of the `CV_8UC3` and friends
-type constants differ from OpenCV 4. Always create Mats via `CvType` constants - a mat created
-with a stale type value silently holds garbage and the drawing calls will fail with
-`img.depth() == CV_8U` assertions.
-
-### Notes for building from source
-
-The `CMakeLists.txt` needs to be adapted to include all the different sources (e.g inspireface + inspirecv)
-
-```bash
-# Clone inspireface - my Head Rev: efb5639ec66d4e94004e4d16f34f44630179f95a
-git clone git@github.com:HyperInspire/InspireFace.git
-git clone git@github.com:deepinsight/insightface.git 
-
-# Fix for minor path issue:
-# cd insightface/cpp-package/inspireface/cpp/inspireface
-# mv Initialization_module/ initialization_module/
-```
-
-### CUDA support
-
-I tried to build the project using TensorRT + CUDA but failed. I also had issues with `inspireface-linux-tensorrt-cuda12.2_ubuntu22.04-1.2.x.zip`.
-
-## Releasing
-
-```bash
-# Set release version and commit changes
-mvn versions:set -DgenerateBackupPoms=false
-git add pom.xml ; git commit -m "Prepare release"
-
-# Invoke release
-mvn clean deploy -Drelease
-```
+The code of this project is licensed under the Apache License 2.0. **The licences of the models are
+separate and are not all permissive** — check the module README before shipping anything.
 
 ## Attribution
 
 Portions of the code in this project were co-authored with the assistance of AI.
-

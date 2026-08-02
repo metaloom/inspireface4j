@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>facedetect4j-jdlib</artifactId>
+
+    <parent>
+        <groupId>io.metaloom.facedetect4j</groupId>
+        <artifactId>facedetect4j-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <name>facedetect4j-jdlib</name>
+    <description>A JNI binding to dlib providing HOG and CNN face detection, landmarks and embeddings</description>
+    <inceptionYear>2023</inceptionYear>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <!--
+      dlib is Boost licensed, not Apache like the rest of the reactor, so this overrides the
+      inherited license block. Note that the *models* are licensed separately and not uniformly -
+      see the README before shipping anything built on the 68 point shape predictor.
+    -->
+    <licenses>
+        <license>
+            <name>Boost Software License - Version 1.0</name>
+            <url>https://spdx.org/licenses/BSL-1.0.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.metaloom.facedetect4j</groupId>
+            <artifactId>facedetect4j-api</artifactId>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>io.metaloom.facedetect4j</groupId>
+            <artifactId>facedetect4j-api</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <!--
+              Contains native/linux/libjdlib.so, which is extracted to a temp file and loaded at
+              runtime. Filtering would corrupt it, so it is copied verbatim.
+            -->
+            <resource>
+                <directory>${basedir}/src/main/resources/</directory>
+                <includes>
+                    <include>**/*</include>
+                </includes>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <?m2e ignore?>
+                        <id>enforce-versions</id>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--
+              Bumped from release 17 to the reactor default (25) so this module can implement
+              facedetect4j-api, whose class files a release 17 compilation cannot read.
+            -->
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <!--
+                      -h regenerates io_metaloom_jdlib_Jdlib.h, which jni/CMakeLists.txt compiles
+                      against: `mvn clean compile` is a required step of the native build, not just
+                      a Java build.
+
+                      The path must be absolute. javac resolves a relative -h against the working
+                      directory, which is the reactor root when this module is built as part of one,
+                      so a bare `jni` silently wrote the header to facedetect4j/jni and left the
+                      real one in jdlib/jni untouched.
+                    -->
+                    <compilerArgs>
+                        <arg>-h</arg>
+                        <arg>${project.basedir}/jni</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
